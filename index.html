@@ -138,7 +138,7 @@
                     <table class="w-full text-left text-[11px] table-fixed">
                         <thead class="bg-slate-800/50 text-slate-500 font-black uppercase">
                             <tr class="text-[10px]">
-                                <th class="p-3">受試者</th><th class="p-3">位置</th><th class="p-3">力/速/負</th><th class="p-3 text-right">HP</th><th class="p-3 text-right">手術</th><th class="p-3 text-right">暗影</th><th class="p-3 text-right">毒氣</th><th class="p-3 text-right">飢餓</th><th class="p-3 text-right">火箭</th><th class="p-3 text-right">消耗品</th><th class="p-3 text-right">新HP</th>
+                                <th class="p-3">受試者</th><th class="p-3">位置</th><th class="p-3">力/速/負</th><th class="p-3 text-right">HP</th><th class="p-3 text-right">手術</th><th class="p-3 text-right">戰亂暗影</th><th class="p-3 text-right">毒氣</th><th class="p-3 text-right">飢餓</th><th class="p-3 text-right">火箭</th><th class="p-3 text-right">消耗品</th><th class="p-3 text-right">新HP</th>
                             </tr>
                         </thead>
                         <tbody id="summaryTableBody" class="divide-y divide-slate-800/50"></tbody>
@@ -299,36 +299,86 @@
             const activePoisonFloors = getActivePoisonFloors();
             const rocketMap = buildRocketHitMap();
 
-            return sourcePlayers.map(p => {
+            // 預先計算戰鬥需要的力量與槍枝狀態
+            const enriched = sourcePlayers.map(p => {
+                const weaponStrBonus = (p.weapons?.shotgun * 4 || 0) + (p.weapons?.pistol * 2 || 0) + (p.weapons?.knife * 2 || 0);
+                const totalStr = p.str + weaponStrBonus;
+                const hasGun = (p.weapons?.shotgun > 0) || (p.weapons?.pistol > 0);
+                const weightUsed = ((p.items?.mask?1:0) + (p.items?.rope?1:0) + (p.items?.adrenaline?1:0) + (p.items?.recycler?1:0) + (p.items?.rocketLauncher?1:0)) + ((p.weapons?.shotgun||0) + (p.weapons?.pistol||0) + (p.weapons?.knife||0));
+                const finalSpdText = p.items?.adrenaline ? `${p.spd} (10)` : p.spd;
+                return { ...p, totalStr, hasGun, weightUsed, finalSpdText, overweight: !p.items?.dimensionPocket && weightUsed > p.lod };
+            });
+
+            const roomMap = {};
+            enriched.forEach(p => {
+                if (!p.currentRoomId) return;
+                const key = p.currentRoomId.toUpperCase();
+                (roomMap[key] = roomMap[key] || []).push(p);
+            });
+
+            // 手術：正巧兩位存活玩家在手術室 -> 各 +4（上限 10）
+            const surgeryBonus = {};
+            const surgeryGroup = (roomMap['B202'] || []).filter(p => p.hp > 0);
+            if (surgeryGroup.length === 2) {
+                surgeryGroup.forEach(p => surgeryBonus[p.uid] = 4);
+            }
+
+            // 戰鬥 / 亂鬥 / 暗影邏輯
+            const battleDelta = {};
+            const battleLabel = {};
+            const resolveCombat = (group, room) => {
+                if (group.length < 2) return;
+                const labels = group.some(p => p.isShadow && group.some(o => o.uid !== p.uid)) ? '暗影' : (group.length >= 3 ? '亂鬥' : '戰鬥');
+                const guns = group.filter(p => p.hasGun);
+                const roomDmg = {};
+
+                if (guns.length === 1) {
+                    const shooter = guns[0];
+                    group.forEach(p => { if (p.uid !== shooter.uid) roomDmg[p.uid] = -(shooter.totalStr); });
+                } else if (guns.length > 1) {
+                    const maxGunStr = Math.max(...guns.map(p => p.totalStr));
+                    guns.forEach(p => { if (p.totalStr < maxGunStr) roomDmg[p.uid] = -(maxGunStr - p.totalStr); });
+                    group.filter(p => !p.hasGun).forEach(p => roomDmg[p.uid] = -(maxGunStr));
+                } else {
+                    const maxStr = Math.max(...group.map(p => p.totalStr));
+                    group.forEach(p => { if (p.totalStr < maxStr) roomDmg[p.uid] = -(maxStr - p.totalStr); });
+                }
+
+                Object.entries(roomDmg).forEach(([uid, delta]) => {
+                    battleDelta[uid] = (battleDelta[uid] || 0) + delta;
+                    battleLabel[uid] = labels;
+                });
+            };
+
+            Object.entries(roomMap).forEach(([room, group]) => {
+                if (room === 'B202') return; // 手術室不觸發戰鬥/亂鬥
+                resolveCombat(group, room);
+            });
+
+            return enriched.map(p => {
                 const upperRoom = p.currentRoomId?.toUpperCase() || '';
                 const maskOn = p.items?.mask;
                 const shadow = p.isShadow;
                 const gasOn = upperRoom ? isRoomPoisoned(upperRoom, activePoisonFloors) : false;
                 const poisonDelta = (!maskOn && gasOn && !shadow) ? -gasDmg : 0;
                 const rocketDelta = upperRoom ? -(rocketMap[upperRoom] || 0) : 0;
-                const surgeryDelta = upperRoom === 'B202' ? 2 : 0;
-                const shadowDelta = 0;
+                const surgeryDelta = surgeryBonus[p.uid] || 0;
+                const combatDelta = battleDelta[p.uid] || 0;
+                const combatLabel = battleLabel[p.uid] || '';
                 const hunger = settlementInputs[p.uid]?.hunger ?? 0;
                 const consumable = settlementInputs[p.uid]?.consumable || 'none';
                 const consumableDelta = getConsumableDelta(consumable);
 
-                const weightUsed = ((p.items?.mask?1:0) + (p.items?.rope?1:0) + (p.items?.adrenaline?1:0) + (p.items?.recycler?1:0) + (p.items?.rocketLauncher?1:0)) + ((p.weapons?.shotgun||0) + (p.weapons?.pistol||0) + (p.weapons?.knife||0));
-                const weaponStrBonus = (p.weapons?.shotgun * 4 || 0) + (p.weapons?.pistol * 2 || 0) + (p.weapons?.knife * 2 || 0);
-                const totalStr = p.str + weaponStrBonus;
-                const finalSpdText = p.items?.adrenaline ? `${p.spd} (10)` : p.spd;
-
-                const newHp = Math.max(0, p.hp + surgeryDelta + shadowDelta + poisonDelta + hunger + rocketDelta + consumableDelta);
+                const rawHp = p.hp + surgeryDelta + combatDelta + poisonDelta + hunger + rocketDelta + consumableDelta;
+                const newHp = Math.max(0, Math.min(10, rawHp));
 
                 return {
                     ...p,
                     gasStatus: gasOn,
-                    totalStr,
-                    finalSpdText,
-                    weightUsed,
-                    overweight: !p.items?.dimensionPocket && weightUsed > p.lod,
                     baseHp: p.hp,
                     surgeryDelta,
-                    shadowDelta,
+                    battleDelta: combatDelta,
+                    battleLabel: combatLabel,
                     poisonDelta,
                     hungerDelta: hunger,
                     rocketDelta,
@@ -462,7 +512,7 @@
                     <td class="p-2 font-mono text-blue-400">${r.totalStr}/${r.finalSpdText}/${r.items.dimensionPocket ? '∞' : r.lod}</td>
                     <td class="p-2 text-right">${r.baseHp}</td>
                     <td class="p-2 text-right">${r.surgeryDelta >= 0 ? '+' : ''}${r.surgeryDelta}</td>
-                    <td class="p-2 text-right">${r.shadowDelta >= 0 ? '+' : ''}${r.shadowDelta}</td>
+                    <td class="p-2 text-right">${r.battleDelta >= 0 ? '+' : ''}${r.battleDelta}${r.battleLabel ? ' ' + r.battleLabel : ''}</td>
                     <td class="p-2 text-right">${r.poisonDelta}</td>
                     <td class="p-2 text-right">
                         <select class="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs" onchange="updateHunger(${r.uid}, this.value)">
@@ -487,7 +537,7 @@
                     <table class="w-full text-[11px] text-left">
                         <thead class="bg-slate-800/60 text-slate-400 font-black uppercase">
                             <tr class="divide-x divide-slate-700">
-                                <th class="p-2">受試者</th><th class="p-2">位置</th><th class="p-2">力/速/負</th><th class="p-2 text-right">HP</th><th class="p-2 text-right">手術</th><th class="p-2 text-right">暗影</th><th class="p-2 text-right">毒氣</th><th class="p-2 text-right">飢餓</th><th class="p-2 text-right">火箭</th><th class="p-2 text-right">消耗品</th><th class="p-2 text-right">新HP</th>
+                                <th class="p-2">受試者</th><th class="p-2">位置</th><th class="p-2">力/速/負</th><th class="p-2 text-right">HP</th><th class="p-2 text-right">手術</th><th class="p-2 text-right">戰亂暗影</th><th class="p-2 text-right">毒氣</th><th class="p-2 text-right">飢餓</th><th class="p-2 text-right">火箭</th><th class="p-2 text-right">消耗品</th><th class="p-2 text-right">新HP</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-slate-800">${tableBody}</tbody>
@@ -769,7 +819,7 @@
                     <td class="p-3 font-mono text-blue-500">${p.totalStr}/${p.finalSpdText}/${p.items.dimensionPocket ? '∞' : p.lod}</td>
                     <td class="p-3 text-right text-white">${p.baseHp}</td>
                     <td class="p-3 text-right ${p.surgeryDelta>0?'text-emerald-400':'text-slate-300'}">${p.surgeryDelta>=0?'+':''}${p.surgeryDelta}</td>
-                    <td class="p-3 text-right text-slate-300">${p.shadowDelta>=0?'+':''}${p.shadowDelta}</td>
+                    <td class="p-3 text-right text-slate-300">${p.battleDelta>=0?'+':''}${p.battleDelta}${p.battleLabel ? ' '+p.battleLabel : ''}</td>
                     <td class="p-3 text-right text-red-400">${p.poisonDelta}</td>
                     <td class="p-3 text-right text-amber-400">${p.hungerDelta}</td>
                     <td class="p-3 text-right text-red-400">${p.rocketDelta}</td>
