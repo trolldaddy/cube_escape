@@ -17,8 +17,9 @@
         .drawer-top.open { transform: translate(-50%, 0); }
         .drawer-left { left: 12px; top: 50%; transform: translate(-102%, -50%); width: 320px; padding: 18px; max-height: calc(100vh - 80px); overflow-y: auto; }
         .drawer-left.open { transform: translate(0, -50%); }
-        .drawer-bottom { bottom: 12px; left: 50%; transform: translate(-50%, 102%); width: min(1200px, 98%); padding: 18px; max-height: 60vh; overflow: hidden; display: flex; flex-direction: column; }
-        .drawer-bottom.open { transform: translate(-50%, 0); }
+        .drawer-bottom { bottom: 12px; left: 50%; transform: translate(-50%, calc(100% - 190px)); width: min(1200px, 98%); padding: 18px; max-height: 60vh; overflow: hidden; display: flex; flex-direction: column; }
+        .drawer-bottom.open { transform: translate(-50%, 0); max-height: 60vh; }
+        .drawer-bottom.peek { transform: translate(-50%, calc(100% - 190px)); max-height: 230px; }
         .drawer-handle { position: fixed; z-index: 70; background: #1d4ed8; color: white; border-radius: 9999px; padding: 10px 14px; font-weight: 900; font-size: 12px; letter-spacing: 0.5px; box-shadow: 0 10px 30px rgba(37,99,235,0.5); }
         .drawer-handle:hover { background: #2563eb; }
         .handle-top { top: 12px; left: 50%; transform: translateX(-50%); }
@@ -75,6 +76,8 @@
         .action-btn { background-color: #facc15; color: #000; font-size: 10px; font-weight: 900; padding: 4px 8px; border-radius: 6px; margin-top: 4px; transition: all 0.2s; }
         .action-btn-used { background-color: #475569; color: #cbd5e1; }
         .player-card-active { ring: 2px solid #3b82f6; background-color: #0f172a !important; border-color: #3b82f6 !important; }
+        .drawer-bottom.peek .player-details { display: none; }
+        .drawer-bottom.peek #playerList { max-height: 200px !important; }
 
         /* 平板裝置適配 */
         body { -webkit-tap-highlight-color: transparent; }
@@ -208,10 +211,15 @@
         function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(players)); }
 
         function toggleDrawer(key) { drawerState[key] = !drawerState[key]; applyDrawerState(); }
+        function setBottomOpen(val) { drawerState.bottom = val; applyDrawerState(); }
         function applyDrawerState() {
             ['top','left','bottom'].forEach(key => {
                 const el = document.getElementById(`${key}Drawer`);
-                if (el) el.classList.toggle('open', drawerState[key]);
+                if (!el) return;
+                el.classList.toggle('open', drawerState[key]);
+                if (key === 'bottom') {
+                    el.classList.toggle('peek', !drawerState[key]);
+                }
             });
         }
         
@@ -254,6 +262,18 @@
             isAimingMode = false;
             renderAll();
         }
+
+        function startMoveMode(uid) {
+            selectPlayer(uid);
+            isAimingMode = false;
+            setBottomOpen(false);
+        }
+
+        function startAimingMode(uid) {
+            selectPlayer(uid);
+            isAimingMode = true;
+            setBottomOpen(false);
+        }
         
         function toggleItem(uid, key) { 
             const p = players.find(x => x.uid === uid); 
@@ -294,8 +314,15 @@
         
         function renderPlayers() {
             const list = document.getElementById('playerList'); const data = getCalculatedState(); list.innerHTML = '';
-            data.forEach(p => {
-                const isActive = selectedUid === p.uid; 
+            const visiblePlayers = selectedUid ? data.filter(p => p.uid === selectedUid) : data;
+
+            if (!visiblePlayers.length) {
+                list.innerHTML = '<div class="text-center text-slate-500 font-bold py-6">請先新增並選擇玩家</div>';
+                return;
+            }
+
+            visiblePlayers.forEach(p => {
+                const isActive = selectedUid === p.uid;
                 const card = document.createElement('div');
                 card.className = `bg-slate-900 border border-slate-800 rounded-[2.5rem] p-6 cursor-pointer transition-all ${isActive ? 'player-card-active shadow-2xl' : (p.isShadow ? 'opacity-40' : '')}`;
                 card.onclick = (e) => { if(!e.target.closest('button') && !e.target.closest('input')) selectPlayer(p.uid); };
@@ -327,7 +354,7 @@
                         const on = p.items[item.k];
                         let actionHtml = '';
                         if (on && item.action === 'aim') {
-                            actionHtml = `<button onclick="event.stopPropagation(); isAimingMode = true; renderAll();" class="action-btn">${p.rocketTarget || '瞄準'}</button>`;
+                            actionHtml = `<button onclick="event.stopPropagation(); startAimingMode(${p.uid}); renderAll();" class="action-btn">${p.rocketTarget || '瞄準'}</button>`;
                         } else if (on && item.action === 'use') {
                             actionHtml = `<button onclick="event.stopPropagation(); toggleRecyclerUse(${p.uid})" class="action-btn ${p.recyclerUsed ? 'action-btn-used' : ''}">${p.recyclerUsed ? '已使用' : '使用'}</button>`;
                         }
@@ -343,6 +370,7 @@
                     <div class="flex justify-between items-center mb-3">
                         <div class="flex items-center gap-3">
                             <span class="text-xl font-black text-white">${p.name}</span>
+                            <button onclick="event.stopPropagation(); startMoveMode(${p.uid});" class="px-3 py-1 rounded-lg text-xs font-black bg-slate-800 text-blue-200 hover:bg-slate-700">移動</button>
                             <span class="room-badge">${p.currentRoomId || '??'}</span>
                         </div>
                         <div class="flex items-center gap-2">
@@ -350,7 +378,7 @@
                         </div>
                     </div>
                     <div class="hp-grid mb-4">${hpHtml}</div>
-                    
+
                     <div class="grid grid-cols-3 gap-2 mb-4">
                         ${[{k:'str',l:'武力',v:p.totalStr,tag:p.hasGun?'(持槍)':''},{k:'spd',l:'速度',v:p.finalSpdText},{k:'lod',l:'負重',v:p.lod}].map(a => `
                             <div class="bg-slate-950/40 rounded-xl overflow-hidden flex justify-between items-center border border-slate-800">
@@ -363,13 +391,15 @@
                             </div>`).join('')}
                     </div>
 
-                    <div class="grid grid-cols-3 gap-2 mb-4">${gridHtml}</div>
+                    <div class="player-details">
+                        <div class="grid grid-cols-3 gap-2 mb-4">${gridHtml}</div>
 
-                    <div class="flex justify-between items-center text-[10px] font-bold text-slate-600">
-                        <label class="flex items-center gap-2"><input type="checkbox" ${p.gasStatus ? 'checked' : ''} onchange="updatePlayer(${p.uid}, 'gasStatus', this.checked)"> 毒氣區</label>
-                        <div class="flex gap-3">
-                            <span class="${p.overweight ? 'text-red-500 font-black' : ''}">負重: ${p.weightUsed}/${p.items.dimensionPocket ? '∞' : p.lod}</span>
-                            <button onclick="removePlayer(${p.uid})" class="hover:text-red-500">移除玩家</button>
+                        <div class="flex justify-between items-center text-[10px] font-bold text-slate-600">
+                            <label class="flex items-center gap-2"><input type="checkbox" ${p.gasStatus ? 'checked' : ''} onchange="updatePlayer(${p.uid}, 'gasStatus', this.checked)"> 毒氣區</label>
+                            <div class="flex gap-3">
+                                <span class="${p.overweight ? 'text-red-500 font-black' : ''}">負重: ${p.weightUsed}/${p.items.dimensionPocket ? '∞' : p.lod}</span>
+                                <button onclick="removePlayer(${p.uid})" class="hover:text-red-500">移除玩家</button>
+                            </div>
                         </div>
                     </div>`;
                 list.appendChild(card);
