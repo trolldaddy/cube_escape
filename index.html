@@ -7,6 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap');
+        :root { --top-peek: 72px; }
         body { font-family: 'Noto+Sans+TC', sans-serif; background-color: #020617; color: #e2e8f0; touch-action: manipulation; overflow-x: hidden; }
 
         /* 地圖相關樣式 */
@@ -64,6 +65,7 @@
         /* 地圖微調位置，避免底部抽屜遮擋 */
         .map-stage { transform: translateY(-48px); }
         @media (max-width: 640px) {
+            :root { --top-peek: 82px; }
             .map-stage { transform: translateY(-32px); }
         }
 
@@ -117,7 +119,7 @@
     </div>
 
     <!-- 上方抽屜：全員統計 -->
-    <div id="topDrawer" data-state="closed" class="drawer-panel fixed left-1/2 -translate-x-1/2 top-3 w-[96vw] max-w-[1400px] bg-slate-900/95 border border-slate-800 rounded-2xl shadow-2xl transition-all duration-300" style="transform: translate(-50%, -55%);">
+    <div id="topDrawer" data-state="closed" class="drawer-panel fixed left-1/2 -translate-x-1/2 top-3 w-[96vw] max-w-[1400px] bg-slate-900/95 border border-slate-800 rounded-2xl shadow-2xl transition-all duration-300" style="transform: translate(-50%, calc(-100% + var(--top-peek)));">
         <button id="topHandle" class="drawer-handle left-1/2 -translate-x-1/2 bottom-[-14px] px-4 py-1" onclick="toggleDrawer('top')">玩家表</button>
         <div class="p-4" id="topDrawerContent">
             <div class="flex justify-end">
@@ -207,7 +209,7 @@
         function toggleDrawer(which, targetState) {
             const el = which === 'top' ? document.getElementById('topDrawer') : which === 'left' ? document.getElementById('leftDrawer') : document.getElementById('bottomDrawer');
             const transforms = {
-                top: { open: 'translate(-50%, 0)', closed: 'translate(-50%, -55%)' },
+                top: { open: 'translate(-50%, 0)', closed: 'translate(-50%, calc(-100% + var(--top-peek)))' },
                 left: { open: 'translate(0, -50%)', closed: 'translate(-92%, -50%)' },
                 bottom: { open: 'translate(-50%, 0)', closed: 'translate(-50%, 70%)' }
             };
