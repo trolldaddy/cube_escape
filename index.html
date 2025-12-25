@@ -17,6 +17,7 @@
         .room-target { background-color: rgba(59, 130, 246, 0.2) !important; border: 2px solid #3b82f6 !important; }
         .room-bombed { background-color: rgba(239, 68, 68, 0.3) !important; border: 2px solid #ef4444 !important; animation: bomb-pulse 1s infinite; }
         @keyframes bomb-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .room-zone:active { scale: 0.98; }
         
         /* HP 網格 */
         .hp-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 2px; width: 100%; height: 8px; }
@@ -54,6 +55,25 @@
         .action-btn { background-color: #facc15; color: #000; font-size: 10px; font-weight: 900; padding: 4px 8px; border-radius: 6px; margin-top: 4px; transition: all 0.2s; }
         .action-btn-used { background-color: #475569; color: #cbd5e1; }
         .player-card-active { ring: 2px solid #3b82f6; background-color: #0f172a !important; border-color: #3b82f6 !important; }
+
+        /* 平板裝置適配 */
+        body { -webkit-tap-highlight-color: transparent; }
+        button, input, select { min-height: 44px; }
+        .tap-friendly { min-height: 44px; min-width: 44px; }
+        @media (max-width: 1100px) {
+            #mapContainer { width: 100%; max-width: 100%; }
+            #interactionOverlay { touch-action: manipulation; }
+            .xl\:col-span-7, .xl\:col-span-5 { width: 100%; }
+            .min-h-[500px] { min-height: 400px; }
+            .tall-btn { font-size: 18px; }
+        }
+        @media (max-width: 900px) {
+            body { padding: 12px; }
+            #mapContainer { border-radius: 1rem; }
+            .room-zone { border-radius: 12px; }
+            .action-btn { width: 100%; }
+            .min-h-[500px] { min-height: 320px; }
+        }
     </style>
 </head>
 <body class="p-4 lg:p-6 min-h-screen">
