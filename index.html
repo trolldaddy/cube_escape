@@ -56,13 +56,13 @@
         .player-card-active { ring: 2px solid #3b82f6; background-color: #0f172a !important; border-color: #3b82f6 !important; }
 
         /* 抽屜樣式 */
-        .drawer-handle { position: absolute; background: #1e293b; color: #cbd5e1; border: 1px solid #334155; border-radius: 9999px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; }
-        .drawer-panel { backdrop-filter: blur(6px); }
+        .drawer-handle { position: absolute; background: #1e293b; color: #cbd5e1; border: 1px solid #334155; border-radius: 9999px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; z-index: 50; }
+        .drawer-panel { backdrop-filter: blur(6px); z-index: 40; }
     </style>
 </head>
 <body class="p-3 lg:p-6 min-h-screen relative overflow-hidden">
     <!-- 左側抽屜：通用控制 -->
-    <div id="leftDrawer" class="drawer-panel fixed top-4 left-4 w-80 max-w-[90vw] bg-slate-900/95 border border-slate-800 rounded-2xl shadow-2xl transition-all duration-300" style="transform: translateX(-72%);">
+    <div id="leftDrawer" class="drawer-panel fixed top-4 left-4 w-80 max-w-[90vw] bg-slate-900/95 border border-slate-800 rounded-2xl shadow-2xl transition-all duration-300" style="transform: translateX(-60%);">
         <button id="leftHandle" class="drawer-handle -right-10 top-4 px-3 py-2" onclick="toggleDrawer('left')">≡</button>
         <div class="p-4 space-y-4">
             <div class="flex items-center justify-between">
@@ -116,7 +116,7 @@
     </div>
 
     <!-- 置中地圖 -->
-    <div class="relative flex items-center justify-center min-h-screen">
+    <div class="relative flex items-center justify-center min-h-screen z-10">
         <div class="bg-slate-900/40 rounded-[2rem] border border-slate-800/50 p-4 flex items-center justify-center min-h-[500px] max-w-[90vw]">
             <div id="mapContainer">
                 <img id="bgMapImage" src="https://raw.githubusercontent.com/trolldaddy/cube_escape/b03b1311f1a19acb5841f42579a0e78f2033ce48/p650925325.jpg" alt="地圖" onload="renderZones()">
@@ -156,7 +156,7 @@
         function toggleDrawer(which) {
             const el = which === 'top' ? document.getElementById('topDrawer') : which === 'left' ? document.getElementById('leftDrawer') : document.getElementById('bottomDrawer');
             const openVal = which === 'top' ? 'translate(-50%, 0)' : which === 'left' ? 'translateX(0)' : 'translate(-50%, 0)';
-            const closedVal = which === 'top' ? 'translate(-50%, -82%)' : which === 'left' ? 'translateX(-72%)' : 'translate(-50%, 70%)';
+            const closedVal = which === 'top' ? 'translate(-50%, -82%)' : which === 'left' ? 'translateX(-60%)' : 'translate(-50%, 70%)';
             const isOpen = el.style.transform === openVal;
             el.style.transform = isOpen ? closedVal : openVal;
         }
