@@ -9,7 +9,7 @@
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap');
         body { font-family: 'Noto+Sans+TC', sans-serif; background-color: #020617; color: #e2e8f0; touch-action: manipulation; overflow: hidden; }
 
-        /* 佈局：固定中央地圖 + 三抽屜 */
+        /* 佈局：固定中央地圖 + 三抽屜（右側取代原本的下方） */
         .main-stage { position: relative; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
         .map-shell { background-color: #0f172a; border-radius: 1.5rem; border: 2px solid #1e293b; padding: 16px; box-shadow: 0 20px 80px rgba(0,0,0,0.45); }
         .drawer { position: fixed; background: rgba(15, 23, 42, 0.96); border: 1px solid #1e293b; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.4); transition: transform 0.28s ease, opacity 0.28s ease; z-index: 60; }
@@ -17,14 +17,14 @@
         .drawer-top.open { transform: translate(-50%, 0); }
         .drawer-left { left: 12px; top: 50%; transform: translate(-102%, -50%); width: 320px; padding: 18px; max-height: calc(100vh - 80px); overflow-y: auto; }
         .drawer-left.open { transform: translate(0, -50%); }
-        .drawer-bottom { bottom: 12px; left: 50%; transform: translate(-50%, calc(100% - 190px)); width: min(1200px, 98%); padding: 18px; max-height: 60vh; overflow: hidden; display: flex; flex-direction: column; }
-        .drawer-bottom.open { transform: translate(-50%, 0); max-height: 60vh; }
-        .drawer-bottom.peek { transform: translate(-50%, calc(100% - 190px)); max-height: 230px; }
+        .drawer-right { right: 12px; top: 50%; transform: translate(102%, -50%); width: 420px; padding: 18px; max-height: calc(100vh - 80px); overflow: hidden; display: flex; flex-direction: column; }
+        .drawer-right.open { transform: translate(0, -50%); }
+        .drawer-right.peek { transform: translate(calc(100% - 240px), -50%); max-height: 360px; }
         .drawer-handle { position: fixed; z-index: 70; background: #1d4ed8; color: white; border-radius: 9999px; padding: 10px 14px; font-weight: 900; font-size: 12px; letter-spacing: 0.5px; box-shadow: 0 10px 30px rgba(37,99,235,0.5); }
         .drawer-handle:hover { background: #2563eb; }
         .handle-top { top: 12px; left: 50%; transform: translateX(-50%); }
         .handle-left { left: 12px; top: 50%; transform: translate(-10%, -50%) rotate(-90deg); transform-origin: left center; }
-        .handle-bottom { bottom: 12px; left: 50%; transform: translateX(-50%); }
+        .handle-right { right: 12px; top: 50%; transform: translate(10%, -50%) rotate(90deg); transform-origin: right center; }
 
         /* 地圖相關樣式 */
         #mapContainer { position: relative; width: fit-content; margin: 0 auto; background-color: #0f172a; border-radius: 1.25rem; border: 2px solid #1e293b; overflow: hidden; }
@@ -69,15 +69,17 @@
         /* 數值標籤與位置標籤 */
         .gun-tag { font-size: 9px; background: #ef4444; color: white; padding: 1px 3px; border-radius: 4px; margin-left: 2px; font-weight: 900; }
         .room-badge { background: #0f172a; color: #3b82f6; padding: 2px 8px; border-radius: 6px; font-size: 14px; font-weight: 900; border: 1px solid #1e293b; }
-        .occupant-tag { background-color: #ef4444; color: white; font-size: 10px; font-weight: 900; padding: 2px 6px; border-radius: 4px; pointer-events: none; border: 1px solid white; z-index: 50; }
+        .occupant-stack { display: flex; flex-direction: column; gap: 2px; align-items: center; pointer-events: none; }
+        .occupant-tag { background-color: #ef4444; color: white; font-size: 10px; font-weight: 900; padding: 2px 6px; border-radius: 4px; pointer-events: none; border: 1px solid white; z-index: 50; white-space: nowrap; }
         
         /* 置中道具格樣式 (右側六格) */
         .center-item { justify-content: center; text-align: center; flex-direction: column; padding: 8px; }
         .action-btn { background-color: #facc15; color: #000; font-size: 10px; font-weight: 900; padding: 4px 8px; border-radius: 6px; margin-top: 4px; transition: all 0.2s; }
         .action-btn-used { background-color: #475569; color: #cbd5e1; }
         .player-card-active { ring: 2px solid #3b82f6; background-color: #0f172a !important; border-color: #3b82f6 !important; }
-        .drawer-bottom.peek .player-details { display: none; }
-        .drawer-bottom.peek #playerList { max-height: 200px !important; }
+        .drawer-right.peek .player-details { display: none; }
+        .drawer-right.peek #playerList { max-height: 280px !important; }
+        .drawer-right.peek .player-card-shell { padding-right: 10px; }
 
         /* 平板裝置適配 */
         body { -webkit-tap-highlight-color: transparent; }
@@ -89,6 +91,7 @@
             #interactionOverlay { touch-action: manipulation; }
             .min-h-[500px] { min-height: 400px; }
             .tall-btn { font-size: 18px; }
+            .drawer-right { width: 360px; }
         }
         @media (max-width: 900px) {
             body { padding: 0; }
@@ -97,7 +100,7 @@
             .room-zone { border-radius: 12px; }
             .action-btn { width: 100%; }
             .drawer-left { width: 280px; }
-            .drawer-bottom { max-height: 65vh; }
+            .drawer-right { width: min(92vw, 360px); max-height: 65vh; }
             .min-h-[500px] { min-height: 320px; }
         }
     </style>
@@ -121,7 +124,7 @@
         <!-- 抽屜開關 -->
         <button class="drawer-handle handle-top" onclick="toggleDrawer('top')">統計表格</button>
         <button class="drawer-handle handle-left" onclick="toggleDrawer('left')">通用操作</button>
-        <button class="drawer-handle handle-bottom" onclick="toggleDrawer('bottom')">玩家面板</button>
+        <button class="drawer-handle handle-right" onclick="toggleDrawer('right')">玩家面板</button>
 
         <!-- 上抽屜：統計表 -->
         <div id="topDrawer" class="drawer drawer-top">
@@ -174,14 +177,14 @@
             </div>
         </div>
 
-        <!-- 下抽屜：玩家控制 -->
-        <div id="bottomDrawer" class="drawer drawer-bottom">
+        <!-- 右抽屜：玩家控制 -->
+        <div id="rightDrawer" class="drawer drawer-right">
             <div class="flex items-center justify-between mb-3">
                 <div>
                     <div class="drawer-title">玩家操作面板</div>
                     <div class="drawer-sub">調整屬性、道具與位置，輔助對照中央地圖</div>
                 </div>
-                <button onclick="toggleDrawer('bottom')" class="text-slate-400 hover:text-white font-black">收合</button>
+                <button onclick="toggleDrawer('right')" class="text-slate-400 hover:text-white font-black">收合</button>
             </div>
             <div id="playerList" class="space-y-4 overflow-y-auto pr-2" style="max-height: calc(60vh - 64px);"></div>
         </div>
@@ -203,7 +206,8 @@
         let players = [];
         let selectedUid = null;
         let isAimingMode = false;
-        const drawerState = { top: true, left: true, bottom: true };
+        let isMoveMode = false;
+        const drawerState = { top: true, left: true, right: true };
         const STORAGE_KEY = 'cube_escape_v8_refined';
         const mapConfig = [{"id":"201","name":"基因庫","x":27.65,"y":8.31,"w":18.41,"h":10.51},{"id":"202","name":"停機坪","x":67.44,"y":9.76,"w":23.60,"h":8.56},{"id":"101","name":"水塔","x":16.44,"y":18.17,"w":6.03,"h":9.91},{"id":"102","name":"激光室","x":27.87,"y":18.72,"w":18.20,"h":8.86},{"id":"103","name":"*","x":68.92,"y":18.72,"w":6.88,"h":8.71},{"id":"104","name":"#","x":76.54,"y":18.57,"w":14.39,"h":9.01},{"id":"B101","name":"控制室","x":9.24,"y":28.18,"w":6.88,"h":9.16},{"id":"B102","name":"#","x":16.54,"y":28.48,"w":5.61,"h":9.01},{"id":"B103","name":"*","x":22.89,"y":28.33,"w":4.44,"h":9.16},{"id":"B104","name":"#","x":27.87,"y":28.48,"w":18.10,"h":9.01},{"id":"B105","name":"回收站","x":46.70,"y":28.63,"w":10.58,"h":8.71},{"id":"B106","name":"#","x":72.52,"y":28.63,"w":7.20,"h":9.01},{"id":"B107","name":"武器庫","x":80.14,"y":28.43,"w":10.58,"h":9.01},{"id":"B201","name":"#","x":9.14,"y":38.34,"w":10.58,"h":9.01},{"id":"B202","name":"手術室","x":20.35,"y":38.49,"w":7.09,"h":8.56},{"id":"B203","name":"#","x":27.87,"y":38.24,"w":10.69,"h":8.86},{"id":"B204","name":"餐廳","x":38.87,"y":38.24,"w":7.20,"h":9.16},{"id":"B205","name":"#","x":46.70,"y":38.24,"w":6.67,"h":9.16},{"id":"B206","name":"金庫","x":68.92,"y":38.19,"w":21.80,"h":9.31},{"id":"B301","name":"藥房","x":9.14,"y":48.10,"w":6.77,"h":8.71},{"id":"B302","name":"#","x":16.65,"y":47.95,"w":6.88,"h":9.16},{"id":"B303","name":"*","x":24.06,"y":48.10,"w":6.88,"h":9.01},{"id":"B304","name":"操作室","x":31.46,"y":48.10,"w":7.20,"h":8.86},{"id":"B305","name":"#","x":39.08,"y":47.95,"w":14.39,"h":9.01},{"id":"B306","name":"#","x":68.92,"y":47.95,"w":4.44,"h":9.01},{"id":"B307","name":"*","x":73.90,"y":47.80,"w":9.63,"h":9.61},{"id":"B308","name":"#","x":83.84,"y":47.95,"w":7.20,"h":9.16},{"id":"B401","name":"#","x":31.57,"y":57.86,"w":14.39,"h":9.01},{"id":"B402","name":"*","x":46.60,"y":57.71,"w":6.67,"h":9.31},{"id":"B403","name":"傳送室","x":68.92,"y":57.71,"w":6.88,"h":9.16},{"id":"B404","name":"#","x":76.44,"y":57.86,"w":6.88,"h":8.71},{"id":"B405","name":"#","x":83.74,"y":57.86,"w":6.98,"h":9.01},{"id":"B501","name":"大倉庫","x":9.14,"y":57.86,"w":21.69,"h":18.62},{"id":"B502","name":"#","x":31.57,"y":67.62,"w":10.58,"h":8.86},{"id":"B503","name":"垃圾場","x":42.79,"y":67.77,"w":14.39,"h":9.01},{"id":"B504","name":"#","x":68.92,"y":67.77,"w":10.58,"h":9.01},{"id":"B505","name":"糧倉","x":80.14,"y":67.62,"w":10.79,"h":9.16},{"id":"B601","name":"酒窖","x":27.87,"y":77.23,"w":17.99,"h":9.31},{"id":"B602","name":"#","x":46.49,"y":77.38,"w":10.69,"h":9.01},{"id":"B603","name":"*","x":57.71,"y":77.38,"w":10.58,"h":9.01},{"id":"B604","name":"#","x":68.92,"y":77.38,"w":10.69,"h":9.01},{"id":"B701","name":"停屍間","x":46.81,"y":87.29,"w":10.26,"h":9.01}];
         
@@ -211,13 +215,13 @@
         function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(players)); }
 
         function toggleDrawer(key) { drawerState[key] = !drawerState[key]; applyDrawerState(); }
-        function setBottomOpen(val) { drawerState.bottom = val; applyDrawerState(); }
+        function setRightOpen(val) { drawerState.right = val; applyDrawerState(); }
         function applyDrawerState() {
-            ['top','left','bottom'].forEach(key => {
+            ['top','left','right'].forEach(key => {
                 const el = document.getElementById(`${key}Drawer`);
                 if (!el) return;
                 el.classList.toggle('open', drawerState[key]);
-                if (key === 'bottom') {
+                if (key === 'right') {
                     el.classList.toggle('peek', !drawerState[key]);
                 }
             });
@@ -253,6 +257,8 @@
             const uid = Date.now();
             players.push({ uid, name, hp: 10, currentRoomId: null, gasStatus: false, isShadow: false, str: 4, spd: 3, lod: 3, rocketTarget: '', recyclerUsed: false, weapons: { shotgun: 0, pistol: 0, knife: 0 }, items: { mask: false, rope: false, adrenaline: false, recycler: false, rocketLauncher: false, dimensionPocket: false } });
             selectedUid = uid;
+            isMoveMode = false;
+            isAimingMode = false;
             document.getElementById('playerNameInput').value = '';
             renderAll(); save();
         }
@@ -260,19 +266,24 @@
         function selectPlayerFromDropdown(val) {
             selectedUid = val ? parseInt(val) : null;
             isAimingMode = false;
+            isMoveMode = false;
             renderAll();
         }
 
         function startMoveMode(uid) {
-            selectPlayer(uid);
+            selectedUid = uid;
             isAimingMode = false;
-            setBottomOpen(false);
+            isMoveMode = true;
+            renderAll();
+            setRightOpen(false);
         }
 
         function startAimingMode(uid) {
-            selectPlayer(uid);
+            selectedUid = uid;
+            isMoveMode = false;
             isAimingMode = true;
-            setBottomOpen(false);
+            renderAll();
+            setRightOpen(false);
         }
         
         function toggleItem(uid, key) { 
@@ -291,13 +302,22 @@
         }
 
         function changeAttr(uid, key, delta) { const p = players.find(x => x.uid === uid); if (p) { p[key] = Math.max(0, p[key] + delta); renderAll(); save(); } }
-        function selectPlayer(uid) { selectedUid = uid; isAimingMode = false; renderAll(); }
+        function selectPlayer(uid) { selectedUid = uid; isAimingMode = false; isMoveMode = false; renderAll(); }
         
-        function moveOrTarget(rid) { 
+        function moveOrTarget(rid) {
             if (!selectedUid) return;
             const p = players.find(x => x.uid === selectedUid);
-            if (isAimingMode) { p.rocketTarget = rid; isAimingMode = false; } else { p.currentRoomId = rid; }
-            renderAll(); save(); 
+            if (isAimingMode) {
+                p.rocketTarget = rid;
+                isAimingMode = false;
+            } else if (isMoveMode) {
+                p.currentRoomId = rid;
+                isMoveMode = false;
+            } else {
+                return;
+            }
+            setRightOpen(true);
+            renderAll(); save();
         }
 
         function processTurn() { const data = getCalculatedState(); let html = ''; data.forEach(p => { if (p.expectedDmg > 0) html += `<div><b>${p.name}</b> 受傷 ${p.expectedDmg} (HP: ${p.hp} -> ${p.newHp})</div>`; }); document.getElementById('resultContent').innerHTML = html || '本回合無人受傷'; document.getElementById('resultModal').classList.remove('hidden'); }
@@ -324,7 +344,7 @@
             visiblePlayers.forEach(p => {
                 const isActive = selectedUid === p.uid;
                 const card = document.createElement('div');
-                card.className = `bg-slate-900 border border-slate-800 rounded-[2.5rem] p-6 cursor-pointer transition-all ${isActive ? 'player-card-active shadow-2xl' : (p.isShadow ? 'opacity-40' : '')}`;
+                card.className = `player-card-shell bg-slate-900 border border-slate-800 rounded-[2.5rem] p-6 cursor-pointer transition-all ${isActive ? 'player-card-active shadow-2xl' : (p.isShadow ? 'opacity-40' : '')}`;
                 card.onclick = (e) => { if(!e.target.closest('button') && !e.target.closest('input')) selectPlayer(p.uid); };
                 
                 let hpHtml = ''; for(let i=1; i<=10; i++) { hpHtml += `<div class="hp-bar-segment ${i <= p.newHp ? (p.newHp <= 3 ? 'hp-danger' : 'hp-active') : (i <= p.hp ? 'hp-will-lose' : '')}"></div>`; }
@@ -420,25 +440,38 @@
         }
 
         function renderZones() {
-            const overlay = document.getElementById('interactionOverlay'); overlay.innerHTML = ''; 
+            const overlay = document.getElementById('interactionOverlay'); overlay.innerHTML = '';
             const occupants = {}; const bombedRooms = new Set();
-            players.forEach(p => { 
-                if(p.currentRoomId) (occupants[p.currentRoomId] = occupants[p.currentRoomId] || []).push(p.name); 
+            players.forEach(p => {
+                if(p.currentRoomId) (occupants[p.currentRoomId] = occupants[p.currentRoomId] || []).push(p.name);
                 if(p.items?.rocketLauncher && p.rocketTarget) bombedRooms.add(p.rocketTarget.toUpperCase());
             });
-            document.getElementById('mapStatusTip').classList.toggle('hidden', !isAimingMode);
+
+            const mapTip = document.getElementById('mapStatusTip');
+            if (isAimingMode) {
+                mapTip.textContent = '⚠️ 請在地圖上點選轟炸目標房間 ⚠️';
+            } else if (isMoveMode) {
+                mapTip.textContent = '⚠️ 請在地圖上點選移動目標房間 ⚠️';
+            }
+            mapTip.classList.toggle('hidden', !(isAimingMode || isMoveMode));
+
             mapConfig.forEach(conf => {
-                const zone = document.createElement('div'); 
+                const zone = document.createElement('div');
                 const p = selectedUid ? players.find(x => x.uid === selectedUid) : null;
                 const isCurrentLoc = p && p.currentRoomId === conf.id;
                 const isBombed = bombedRooms.has(conf.id.toUpperCase());
-                zone.className = `room-zone ${isCurrentLoc ? 'room-target' : ''} ${isBombed ? 'room-bombed' : ''}`; 
+                zone.className = `room-zone ${isCurrentLoc ? 'room-target' : ''} ${isBombed ? 'room-bombed' : ''}`;
                 zone.style.cssText = `left:${conf.x}%; top:${conf.y}%; width:${conf.w}%; height:${conf.h}%;`;
-                if (occupants[conf.id]) { 
-                    const tag = document.createElement('div'); const count = occupants[conf.id].length; 
-                    tag.className = `occupant-tag`; 
-                    tag.innerText = count > 1 ? `${occupants[conf.id][0]}+` : occupants[conf.id][0]; 
-                    zone.appendChild(tag); 
+                if (occupants[conf.id]) {
+                    const wrap = document.createElement('div');
+                    wrap.className = 'occupant-stack';
+                    occupants[conf.id].forEach(name => {
+                        const tag = document.createElement('div');
+                        tag.className = 'occupant-tag';
+                        tag.innerText = name;
+                        wrap.appendChild(tag);
+                    });
+                    zone.appendChild(wrap);
                 }
                 zone.onclick = (e) => { e.stopPropagation(); moveOrTarget(conf.id); }; overlay.appendChild(zone);
             });
