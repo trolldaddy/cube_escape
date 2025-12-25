@@ -7,39 +7,17 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap');
-        body { font-family: 'Noto+Sans+TC', sans-serif; background-color: #020617; color: #e2e8f0; touch-action: manipulation; overflow: hidden; }
-
-        /* 佈局：固定中央地圖 + 三抽屜（右側取代原本的下方） */
-        .main-stage { position: relative; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
-        .map-shell { background-color: #0f172a; border-radius: 1.5rem; border: 2px solid #1e293b; padding: 16px; box-shadow: 0 20px 80px rgba(0,0,0,0.45); }
-        .drawer { position: fixed; background: rgba(15, 23, 42, 0.96); border: 1px solid #1e293b; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.4); transition: transform 0.28s ease, opacity 0.28s ease; z-index: 60; }
-        .drawer-top { top: 12px; left: 50%; transform: translate(-50%, -102%); width: min(1100px, 96%); padding: 18px; }
-        .drawer-top.open { transform: translate(-50%, 0); }
-        .drawer-left { left: 12px; top: 50%; transform: translate(-102%, -50%); width: 320px; padding: 18px; max-height: calc(100vh - 80px); overflow-y: auto; }
-        .drawer-left.open { transform: translate(0, -50%); }
-        .drawer-right { right: 12px; top: 50%; transform: translate(102%, -50%); width: 460px; padding: 18px; max-height: calc(100vh - 80px); overflow: hidden; display: flex; flex-direction: column; }
-        .drawer-right.open { transform: translate(0, -50%); }
-        .drawer-right.peek { transform: translate(calc(100% - 260px), -50%); max-height: 380px; padding: 18px 10px 18px 18px; }
-        .drawer-handle { position: fixed; z-index: 70; background: #1d4ed8; color: white; border-radius: 9999px; padding: 10px 14px; font-weight: 900; font-size: 12px; letter-spacing: 0.5px; box-shadow: 0 10px 30px rgba(37,99,235,0.5); }
-        .drawer-handle:hover { background: #2563eb; }
-        .handle-top { top: 12px; left: 50%; transform: translateX(-50%); }
-        .handle-left { left: 12px; top: 50%; transform: translate(-10%, -50%) rotate(-90deg); transform-origin: left center; }
-        .handle-right { right: 12px; top: 50%; transform: translate(10%, -50%) rotate(90deg); transform-origin: right center; }
-
+        body { font-family: 'Noto+Sans+TC', sans-serif; background-color: #020617; color: #e2e8f0; touch-action: manipulation; overflow-x: hidden; }
+        
         /* 地圖相關樣式 */
-        #mapContainer { position: relative; width: fit-content; margin: 0 auto; background-color: #0f172a; border-radius: 1.25rem; border: 2px solid #1e293b; overflow: hidden; }
+        #mapContainer { position: relative; width: fit-content; margin: 0 auto; background-color: #0f172a; border-radius: 1.5rem; border: 2px solid #1e293b; overflow: hidden; }
         #bgMapImage { display: block; max-width: 100%; height: auto; z-index: 5; }
         #interactionOverlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 20; }
         .room-zone { position: absolute; cursor: pointer; border: 1px solid transparent; transition: all 0.2s; display: flex; align-items: center; justify-content: center; }
         .room-target { background-color: rgba(59, 130, 246, 0.2) !important; border: 2px solid #3b82f6 !important; }
         .room-bombed { background-color: rgba(239, 68, 68, 0.3) !important; border: 2px solid #ef4444 !important; animation: bomb-pulse 1s infinite; }
         @keyframes bomb-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-        .room-zone:active { scale: 0.98; }
-
-        /* 抽屜內容 */
-        .drawer-title { font-size: 14px; font-weight: 900; letter-spacing: 1px; color: #cbd5e1; text-transform: uppercase; }
-        .drawer-sub { font-size: 12px; color: #64748b; }
-
+        
         /* HP 網格 */
         .hp-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 2px; width: 100%; height: 8px; }
         .hp-bar-segment { height: 100%; border-radius: 1px; background-color: #1e293b; }
@@ -69,73 +47,33 @@
         /* 數值標籤與位置標籤 */
         .gun-tag { font-size: 9px; background: #ef4444; color: white; padding: 1px 3px; border-radius: 4px; margin-left: 2px; font-weight: 900; }
         .room-badge { background: #0f172a; color: #3b82f6; padding: 2px 8px; border-radius: 6px; font-size: 14px; font-weight: 900; border: 1px solid #1e293b; }
-        .occupant-stack { display: flex; flex-direction: column; gap: 2px; align-items: center; pointer-events: none; }
-        .occupant-tag { background-color: #ef4444; color: white; font-size: 10px; font-weight: 900; padding: 2px 6px; border-radius: 4px; pointer-events: none; border: 1px solid white; z-index: 50; white-space: nowrap; }
+        .occupant-tag { background-color: #ef4444; color: white; font-size: 10px; font-weight: 900; padding: 2px 6px; border-radius: 4px; pointer-events: none; border: 1px solid white; z-index: 50; }
         
         /* 置中道具格樣式 (右側六格) */
         .center-item { justify-content: center; text-align: center; flex-direction: column; padding: 8px; }
         .action-btn { background-color: #facc15; color: #000; font-size: 10px; font-weight: 900; padding: 4px 8px; border-radius: 6px; margin-top: 4px; transition: all 0.2s; }
         .action-btn-used { background-color: #475569; color: #cbd5e1; }
         .player-card-active { ring: 2px solid #3b82f6; background-color: #0f172a !important; border-color: #3b82f6 !important; }
-        .drawer-right .player-card-shell { display: grid; grid-template-columns: 260px 1fr; gap: 12px; align-items: start; }
-        .drawer-right.peek .player-card-shell { grid-template-columns: 1fr; }
-        .drawer-right.peek .player-details { display: none; }
-        .drawer-right.peek #playerList { max-height: 300px !important; }
-        .drawer-right .player-peek { min-width: 240px; }
-
-        /* 平板裝置適配 */
-        body { -webkit-tap-highlight-color: transparent; }
-        button, input, select { min-height: 44px; }
-        .tap-friendly { min-height: 44px; min-width: 44px; }
-        @media (max-width: 1100px) {
-            .map-shell { width: 100%; max-width: 100%; padding: 12px; }
-            #mapContainer { width: 100%; max-width: 100%; }
-            #interactionOverlay { touch-action: manipulation; }
-            .min-h-[500px] { min-height: 400px; }
-            .tall-btn { font-size: 18px; }
-            .drawer-right { width: 360px; }
-        }
-        @media (max-width: 900px) {
-            body { padding: 0; }
-            .main-stage { padding: 12px; }
-            #mapContainer { border-radius: 1rem; }
-            .room-zone { border-radius: 12px; }
-            .action-btn { width: 100%; }
-            .drawer-left { width: 280px; }
-            .drawer-right { width: min(92vw, 360px); max-height: 65vh; }
-            .min-h-[500px] { min-height: 320px; }
-        }
     </style>
 </head>
-<body>
-    <div class="main-stage">
-        <div class="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-3">
-            <h1 class="text-2xl font-black text-white tracking-tight">CUBE ESCAPE <span class="text-blue-500 font-light italic text-lg">v8</span></h1>
-        </div>
-
-        <div class="map-shell">
-            <div id="mapStatusTip" class="bg-red-600/20 text-red-500 text-[10px] font-black py-2 px-4 rounded-xl text-center uppercase tracking-widest hidden border border-red-600/30 mb-3">⚠️ 請在地圖上點選轟炸目標房間 ⚠️</div>
-            <div class="bg-slate-900/60 rounded-[1.75rem] border border-slate-800/50 p-3 flex items-center justify-center min-h-[500px] relative overflow-hidden">
+<body class="p-4 lg:p-6 min-h-screen">
+    <div class="max-w-[1600px] mx-auto grid grid-cols-1 xl:grid-cols-12 gap-6">
+        <!-- 左側面板：地圖與統計 -->
+        <div class="xl:col-span-7 space-y-4">
+            <header class="flex justify-between items-center">
+                <h1 class="text-2xl font-black text-white tracking-tighter">CUBE ESCAPE <span class="text-blue-500 font-light italic text-lg">v8</span></h1>
+                <select id="gameRound" onchange="renderAll()" class="bg-slate-900 text-amber-500 font-black text-sm px-4 py-2 rounded-xl border border-slate-800 outline-none">
+                    <option value="1">回合 1 (毒-1)</option><option value="2">回合 2 (毒-2)</option>
+                    <option value="3">回合 3 (毒-2)</option><option value="4">回合 4 (毒-3)</option>
+                    <option value="5">回合 5 (毒-3)</option><option value="6">回合 6 (毒-4)</option>
+                </select>
+            </header>
+            <div id="mapStatusTip" class="bg-red-600/20 text-red-500 text-[10px] font-black py-2 rounded-xl text-center uppercase tracking-widest hidden border border-red-600/30">⚠️ 請在地圖上點選轟炸目標房間 ⚠️</div>
+            <div class="bg-slate-900/40 rounded-[2rem] border border-slate-800/50 p-4 flex items-center justify-center min-h-[500px] relative overflow-hidden">
                 <div id="mapContainer">
                     <img id="bgMapImage" src="https://raw.githubusercontent.com/trolldaddy/cube_escape/b03b1311f1a19acb5841f42579a0e78f2033ce48/p650925325.jpg" alt="地圖" onload="renderZones()">
                     <div id="interactionOverlay"></div>
                 </div>
-            </div>
-        </div>
-
-        <!-- 抽屜開關 -->
-        <button class="drawer-handle handle-top" onclick="toggleDrawer('top')">統計表格</button>
-        <button class="drawer-handle handle-left" onclick="toggleDrawer('left')">通用操作</button>
-        <button class="drawer-handle handle-right" onclick="toggleDrawer('right')">玩家面板</button>
-
-        <!-- 上抽屜：統計表 -->
-        <div id="topDrawer" class="drawer drawer-top">
-            <div class="flex items-center justify-between mb-3">
-                <div>
-                    <div class="drawer-title">受試者統計</div>
-                    <div class="drawer-sub">快捷查看所有玩家當前位置與屬性</div>
-                </div>
-                <button onclick="toggleDrawer('top')" class="text-slate-400 hover:text-white font-black">收合</button>
             </div>
             <div class="bg-slate-900/80 rounded-2xl border border-slate-800 overflow-hidden">
                 <table class="w-full text-left text-[11px]">
@@ -147,48 +85,19 @@
             </div>
         </div>
 
-        <!-- 左抽屜：通用操作 -->
-        <div id="leftDrawer" class="drawer drawer-left">
-            <div class="flex items-center justify-between mb-4">
-                <div>
-                    <div class="drawer-title">通用操作</div>
-                    <div class="drawer-sub">新增玩家、回合選擇與結算</div>
-                </div>
-                <button onclick="toggleDrawer('left')" class="text-slate-400 hover:text-white font-black">收合</button>
-            </div>
-            <div class="space-y-3">
-                <label class="text-xs text-slate-400 font-bold">遊戲回合</label>
-                <select id="gameRound" onchange="renderAll()" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 font-black text-amber-500 outline-none">
-                    <option value="1">回合 1 (毒-1)</option><option value="2">回合 2 (毒-2)</option>
-                    <option value="3">回合 3 (毒-2)</option><option value="4">回合 4 (毒-3)</option>
-                    <option value="5">回合 5 (毒-3)</option><option value="6">回合 6 (毒-4)</option>
-                </select>
-
-                <label class="text-xs text-slate-400 font-bold">快速切換當前操作玩家</label>
-                <select id="activePlayerSelect" onchange="selectPlayerFromDropdown(this.value)" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 font-black text-blue-200 outline-none"></select>
-
+        <!-- 右側面板：玩家清單與控制 -->
+        <div class="xl:col-span-5 flex flex-col gap-6">
+            <div class="bg-slate-900 p-5 rounded-[2rem] border border-slate-800 space-y-4">
                 <div class="flex gap-2">
                     <input type="text" id="playerNameInput" placeholder="輸入玩家名稱..." class="bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 w-full font-bold outline-none" onkeypress="if(event.key==='Enter') addPlayer()">
                     <button onclick="addPlayer()" class="bg-blue-600 w-12 rounded-xl font-black text-white text-xl">＋</button>
                 </div>
-
                 <div class="grid grid-cols-2 gap-2">
                     <button onclick="processTurn()" class="bg-emerald-600 py-3 rounded-xl font-black text-white text-sm uppercase">回合結算</button>
                     <button onclick="resetData()" class="bg-slate-800 py-3 rounded-xl text-slate-400 font-bold text-xs">清空數據</button>
                 </div>
             </div>
-        </div>
-
-        <!-- 右抽屜：玩家控制 -->
-        <div id="rightDrawer" class="drawer drawer-right">
-            <div class="flex items-center justify-between mb-3">
-                <div>
-                    <div class="drawer-title">玩家操作面板</div>
-                    <div class="drawer-sub">調整屬性、道具與位置，輔助對照中央地圖</div>
-                </div>
-                <button onclick="toggleDrawer('right')" class="text-slate-400 hover:text-white font-black">收合</button>
-            </div>
-            <div id="playerList" class="space-y-4 overflow-y-auto pr-2" style="max-height: calc(60vh - 64px);"></div>
+            <div id="playerList" class="space-y-4 overflow-y-auto max-h-[calc(100vh-280px)] pr-2"></div>
         </div>
     </div>
 
@@ -205,35 +114,14 @@
     </div>
 
     <script>
-        let players = [];
-        let selectedUid = null;
-        let isAimingMode = false;
-        let isMoveMode = false;
-        const drawerState = { top: true, left: true, right: true };
+        let players = []; 
+        let selectedUid = null; 
+        let isAimingMode = false; 
         const STORAGE_KEY = 'cube_escape_v8_refined';
-        const GAS_ROOM_PREFIXES = ['B'];
         const mapConfig = [{"id":"201","name":"基因庫","x":27.65,"y":8.31,"w":18.41,"h":10.51},{"id":"202","name":"停機坪","x":67.44,"y":9.76,"w":23.60,"h":8.56},{"id":"101","name":"水塔","x":16.44,"y":18.17,"w":6.03,"h":9.91},{"id":"102","name":"激光室","x":27.87,"y":18.72,"w":18.20,"h":8.86},{"id":"103","name":"*","x":68.92,"y":18.72,"w":6.88,"h":8.71},{"id":"104","name":"#","x":76.54,"y":18.57,"w":14.39,"h":9.01},{"id":"B101","name":"控制室","x":9.24,"y":28.18,"w":6.88,"h":9.16},{"id":"B102","name":"#","x":16.54,"y":28.48,"w":5.61,"h":9.01},{"id":"B103","name":"*","x":22.89,"y":28.33,"w":4.44,"h":9.16},{"id":"B104","name":"#","x":27.87,"y":28.48,"w":18.10,"h":9.01},{"id":"B105","name":"回收站","x":46.70,"y":28.63,"w":10.58,"h":8.71},{"id":"B106","name":"#","x":72.52,"y":28.63,"w":7.20,"h":9.01},{"id":"B107","name":"武器庫","x":80.14,"y":28.43,"w":10.58,"h":9.01},{"id":"B201","name":"#","x":9.14,"y":38.34,"w":10.58,"h":9.01},{"id":"B202","name":"手術室","x":20.35,"y":38.49,"w":7.09,"h":8.56},{"id":"B203","name":"#","x":27.87,"y":38.24,"w":10.69,"h":8.86},{"id":"B204","name":"餐廳","x":38.87,"y":38.24,"w":7.20,"h":9.16},{"id":"B205","name":"#","x":46.70,"y":38.24,"w":6.67,"h":9.16},{"id":"B206","name":"金庫","x":68.92,"y":38.19,"w":21.80,"h":9.31},{"id":"B301","name":"藥房","x":9.14,"y":48.10,"w":6.77,"h":8.71},{"id":"B302","name":"#","x":16.65,"y":47.95,"w":6.88,"h":9.16},{"id":"B303","name":"*","x":24.06,"y":48.10,"w":6.88,"h":9.01},{"id":"B304","name":"操作室","x":31.46,"y":48.10,"w":7.20,"h":8.86},{"id":"B305","name":"#","x":39.08,"y":47.95,"w":14.39,"h":9.01},{"id":"B306","name":"#","x":68.92,"y":47.95,"w":4.44,"h":9.01},{"id":"B307","name":"*","x":73.90,"y":47.80,"w":9.63,"h":9.61},{"id":"B308","name":"#","x":83.84,"y":47.95,"w":7.20,"h":9.16},{"id":"B401","name":"#","x":31.57,"y":57.86,"w":14.39,"h":9.01},{"id":"B402","name":"*","x":46.60,"y":57.71,"w":6.67,"h":9.31},{"id":"B403","name":"傳送室","x":68.92,"y":57.71,"w":6.88,"h":9.16},{"id":"B404","name":"#","x":76.44,"y":57.86,"w":6.88,"h":8.71},{"id":"B405","name":"#","x":83.74,"y":57.86,"w":6.98,"h":9.01},{"id":"B501","name":"大倉庫","x":9.14,"y":57.86,"w":21.69,"h":18.62},{"id":"B502","name":"#","x":31.57,"y":67.62,"w":10.58,"h":8.86},{"id":"B503","name":"垃圾場","x":42.79,"y":67.77,"w":14.39,"h":9.01},{"id":"B504","name":"#","x":68.92,"y":67.77,"w":10.58,"h":9.01},{"id":"B505","name":"糧倉","x":80.14,"y":67.62,"w":10.79,"h":9.16},{"id":"B601","name":"酒窖","x":27.87,"y":77.23,"w":17.99,"h":9.31},{"id":"B602","name":"#","x":46.49,"y":77.38,"w":10.69,"h":9.01},{"id":"B603","name":"*","x":57.71,"y":77.38,"w":10.58,"h":9.01},{"id":"B604","name":"#","x":68.92,"y":77.38,"w":10.69,"h":9.01},{"id":"B701","name":"停屍間","x":46.81,"y":87.29,"w":10.26,"h":9.01}];
         
         window.onload = () => { const saved = localStorage.getItem(STORAGE_KEY); if (saved) players = JSON.parse(saved); renderAll(); };
         function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(players)); }
-
-        function isGasRoom(roomId) {
-            if (!roomId) return false;
-            return GAS_ROOM_PREFIXES.some(prefix => roomId.toUpperCase().startsWith(prefix.toUpperCase()));
-        }
-
-        function toggleDrawer(key) { drawerState[key] = !drawerState[key]; applyDrawerState(); }
-        function setRightOpen(val) { drawerState.right = val; applyDrawerState(); }
-        function applyDrawerState() {
-            ['top','left','right'].forEach(key => {
-                const el = document.getElementById(`${key}Drawer`);
-                if (!el) return;
-                el.classList.toggle('open', drawerState[key]);
-                if (key === 'right') {
-                    el.classList.toggle('peek', !drawerState[key]);
-                }
-            });
-        }
         
         function getCalculatedState() {
             const round = parseInt(document.getElementById('gameRound').value); 
@@ -244,57 +132,22 @@
                 let dmg = 0; let weightUsed = 0;
                 // 小刀改為 +2
                 let weaponStrBonus = (p.weapons.shotgun * 4) + (p.weapons.pistol * 2) + (p.weapons.knife * 2);
-
-                const gasStatus = isGasRoom(p.currentRoomId);
-
+                
                 weightUsed += (p.items.mask?1:0) + (p.items.rope?1:0) + (p.items.adrenaline?1:0) + (p.items.recycler?1:0) + (p.items.rocketLauncher?1:0);
                 weightUsed += (p.weapons.shotgun || 0) + (p.weapons.pistol || 0) + (p.weapons.knife || 0);
 
-                if (!p.items.mask && gasStatus && !p.isShadow) dmg += gasDmg;
+                if (!p.items.mask && p.gasStatus && !p.isShadow) dmg += gasDmg;
                 players.forEach(other => { if (other.items.rocketLauncher && other.rocketTarget && p.currentRoomId?.toUpperCase() === other.rocketTarget.toUpperCase()) dmg += 4; });
-
+                
                 const finalSpdText = p.items.adrenaline ? `${p.spd} (10)` : p.spd;
                 const totalStr = p.str + weaponStrBonus;
                 const hasGun = (p.weapons.shotgun > 0) || (p.weapons.pistol > 0);
 
-                return { ...p, gasStatus, totalStr, expectedDmg: dmg, newHp: Math.max(0, p.hp - dmg), finalSpdText, weightUsed, overweight: !p.items.dimensionPocket && weightUsed > p.lod, hasGun };
+                return { ...p, totalStr, expectedDmg: dmg, newHp: Math.max(0, p.hp - dmg), finalSpdText, weightUsed, overweight: !p.items.dimensionPocket && weightUsed > p.lod, hasGun };
             });
         }
 
-        function addPlayer() {
-            const name = document.getElementById('playerNameInput').value.trim();
-            if (!name) return;
-            const uid = Date.now();
-            players.push({ uid, name, hp: 10, currentRoomId: null, gasStatus: false, isShadow: false, str: 4, spd: 3, lod: 3, rocketTarget: '', recyclerUsed: false, weapons: { shotgun: 0, pistol: 0, knife: 0 }, items: { mask: false, rope: false, adrenaline: false, recycler: false, rocketLauncher: false, dimensionPocket: false } });
-            selectedUid = uid;
-            isMoveMode = false;
-            isAimingMode = false;
-            document.getElementById('playerNameInput').value = '';
-            renderAll(); save();
-        }
-
-        function selectPlayerFromDropdown(val) {
-            selectedUid = val ? parseInt(val) : null;
-            isAimingMode = false;
-            isMoveMode = false;
-            renderAll();
-        }
-
-        function startMoveMode(uid) {
-            selectedUid = uid;
-            isAimingMode = false;
-            isMoveMode = true;
-            renderAll();
-            setRightOpen(false);
-        }
-
-        function startAimingMode(uid) {
-            selectedUid = uid;
-            isMoveMode = false;
-            isAimingMode = true;
-            renderAll();
-            setRightOpen(false);
-        }
+        function addPlayer() { const name = document.getElementById('playerNameInput').value.trim(); if (!name) return; players.push({ uid: Date.now(), name, hp: 10, currentRoomId: null, gasStatus: false, isShadow: false, str: 4, spd: 3, lod: 3, rocketTarget: '', recyclerUsed: false, weapons: { shotgun: 0, pistol: 0, knife: 0 }, items: { mask: false, rope: false, adrenaline: false, recycler: false, rocketLauncher: false, dimensionPocket: false } }); document.getElementById('playerNameInput').value = ''; renderAll(); save(); }
         
         function toggleItem(uid, key) { 
             const p = players.find(x => x.uid === uid); 
@@ -312,49 +165,26 @@
         }
 
         function changeAttr(uid, key, delta) { const p = players.find(x => x.uid === uid); if (p) { p[key] = Math.max(0, p[key] + delta); renderAll(); save(); } }
-        function selectPlayer(uid) { selectedUid = uid; isAimingMode = false; isMoveMode = false; renderAll(); }
+        function selectPlayer(uid) { selectedUid = uid; isAimingMode = false; renderAll(); }
         
-        function moveOrTarget(rid) {
+        function moveOrTarget(rid) { 
             if (!selectedUid) return;
             const p = players.find(x => x.uid === selectedUid);
-            if (isAimingMode) {
-                p.rocketTarget = rid;
-                isAimingMode = false;
-            } else if (isMoveMode) {
-                p.currentRoomId = rid;
-                isMoveMode = false;
-            } else {
-                return;
-            }
-            setRightOpen(true);
-            renderAll(); save();
+            if (isAimingMode) { p.rocketTarget = rid; isAimingMode = false; } else { p.currentRoomId = rid; }
+            renderAll(); save(); 
         }
 
         function processTurn() { const data = getCalculatedState(); let html = ''; data.forEach(p => { if (p.expectedDmg > 0) html += `<div><b>${p.name}</b> 受傷 ${p.expectedDmg} (HP: ${p.hp} -> ${p.newHp})</div>`; }); document.getElementById('resultContent').innerHTML = html || '本回合無人受傷'; document.getElementById('resultModal').classList.remove('hidden'); }
-        function confirmSettle() { const data = getCalculatedState(); players = data.map(p => ({ ...p, hp: p.newHp, rocketTarget: '', recyclerUsed: false, items: { ...p.items, adrenaline: false }})); document.getElementById('resultModal').classList.add('hidden'); renderAll(); save(); }
+        function confirmSettle() { const data = getCalculatedState(); players = data.map(p => ({ ...p, hp: p.newHp, gasStatus: false, rocketTarget: '', recyclerUsed: false, items: { ...p.items, adrenaline: false }})); document.getElementById('resultModal').classList.add('hidden'); renderAll(); save(); }
         
-        function renderAll() {
-            if (selectedUid && !players.some(p => p.uid === selectedUid)) selectedUid = players[0]?.uid || null;
-            applyDrawerState();
-            renderActiveSelect();
-            renderPlayers();
-            renderZones();
-            renderSummary();
-        }
+        function renderAll() { renderPlayers(); renderZones(); renderSummary(); }
         
         function renderPlayers() {
             const list = document.getElementById('playerList'); const data = getCalculatedState(); list.innerHTML = '';
-            const visiblePlayers = selectedUid ? data.filter(p => p.uid === selectedUid) : data;
-
-            if (!visiblePlayers.length) {
-                list.innerHTML = '<div class="text-center text-slate-500 font-bold py-6">請先新增並選擇玩家</div>';
-                return;
-            }
-
-            visiblePlayers.forEach(p => {
-                const isActive = selectedUid === p.uid;
+            data.forEach(p => {
+                const isActive = selectedUid === p.uid; 
                 const card = document.createElement('div');
-                card.className = `player-card-shell bg-slate-900 border border-slate-800 rounded-[2.5rem] p-6 cursor-pointer transition-all ${isActive ? 'player-card-active shadow-2xl' : (p.isShadow ? 'opacity-40' : '')}`;
+                card.className = `bg-slate-900 border border-slate-800 rounded-[2.5rem] p-6 cursor-pointer transition-all ${isActive ? 'player-card-active shadow-2xl' : (p.isShadow ? 'opacity-40' : '')}`;
                 card.onclick = (e) => { if(!e.target.closest('button') && !e.target.closest('input')) selectPlayer(p.uid); };
                 
                 let hpHtml = ''; for(let i=1; i<=10; i++) { hpHtml += `<div class="hp-bar-segment ${i <= p.newHp ? (p.newHp <= 3 ? 'hp-danger' : 'hp-active') : (i <= p.hp ? 'hp-will-lose' : '')}"></div>`; }
@@ -384,7 +214,7 @@
                         const on = p.items[item.k];
                         let actionHtml = '';
                         if (on && item.action === 'aim') {
-                            actionHtml = `<button onclick="event.stopPropagation(); startAimingMode(${p.uid}); renderAll();" class="action-btn">${p.rocketTarget || '瞄準'}</button>`;
+                            actionHtml = `<button onclick="event.stopPropagation(); isAimingMode = true; renderAll();" class="action-btn">${p.rocketTarget || '瞄準'}</button>`;
                         } else if (on && item.action === 'use') {
                             actionHtml = `<button onclick="event.stopPropagation(); toggleRecyclerUse(${p.uid})" class="action-btn ${p.recyclerUsed ? 'action-btn-used' : ''}">${p.recyclerUsed ? '已使用' : '使用'}</button>`;
                         }
@@ -397,53 +227,35 @@
                 }).join('');
 
                 card.innerHTML = `
-                    <div class="player-peek space-y-3">
-                        <div class="flex items-start justify-between gap-2">
-                            <div class="flex items-center gap-2 flex-wrap">
-                                <span class="text-xl font-black text-white">${p.name}</span>
-                                <button onclick="event.stopPropagation(); startMoveMode(${p.uid});" class="px-3 py-1 rounded-lg text-xs font-black bg-slate-800 text-blue-200 hover:bg-slate-700">移動</button>
-                                <span class="room-badge">${p.currentRoomId || '??'}</span>
-                                ${p.gasStatus ? '<span class="px-2 py-1 rounded-lg bg-red-500/20 text-red-300 text-[10px] font-black">毒氣樓層</span>' : ''}
-                            </div>
-                            <span class="text-2xl font-black ${p.hp <= 3 ? 'text-red-500' : 'text-green-500'}">${p.hp}</span>
+                    <div class="flex justify-between items-center mb-3">
+                        <div class="flex items-center gap-3">
+                            <span class="text-xl font-black text-white">${p.name}</span>
+                            <span class="room-badge">${p.currentRoomId || '??'}</span>
                         </div>
-                        <div class="flex items-center gap-2 text-[11px] font-bold text-slate-300 flex-wrap">
-                            <div class="flex items-center gap-1 bg-slate-800/80 rounded-xl px-3 py-2">
-                                <span class="text-slate-500">武力</span>
-                                <span class="text-white text-sm font-black">${p.totalStr}</span>
-                            </div>
-                            <div class="flex items-center gap-1 bg-slate-800/80 rounded-xl px-3 py-2">
-                                <span class="text-slate-500">速度</span>
-                                <span class="text-white text-sm font-black">${p.finalSpdText}</span>
-                            </div>
-                            <div class="flex items-center gap-1 bg-slate-800/80 rounded-xl px-3 py-2">
-                                <span class="text-slate-500">負重</span>
-                                <span class="text-white text-sm font-black">${p.items.dimensionPocket ? '∞' : p.lod}</span>
-                            </div>
+                        <div class="flex items-center gap-2">
+                             <span class="text-2xl font-black ${p.hp <= 3 ? 'text-red-500' : 'text-green-500'}">${p.hp}</span>
                         </div>
-                        <div class="hp-grid">${hpHtml}</div>
+                    </div>
+                    <div class="hp-grid mb-4">${hpHtml}</div>
+                    
+                    <div class="grid grid-cols-3 gap-2 mb-4">
+                        ${[{k:'str',l:'武力',v:p.totalStr,tag:p.hasGun?'(持槍)':''},{k:'spd',l:'速度',v:p.finalSpdText},{k:'lod',l:'負重',v:p.lod}].map(a => `
+                            <div class="bg-slate-950/40 rounded-xl overflow-hidden flex justify-between items-center border border-slate-800">
+                                <button onclick="event.stopPropagation(); changeAttr(${p.uid},'${a.k}',-1)" class="tall-btn">－</button>
+                                <div class="text-center py-1">
+                                    <div class="text-[9px] font-bold text-slate-500 leading-none">${a.l}${a.tag?`<br><span class="gun-tag">${a.tag}</span>`:''}</div>
+                                    <div class="text-xs font-black text-white mt-1">${a.v}</div>
+                                </div>
+                                <button onclick="event.stopPropagation(); changeAttr(${p.uid},'${a.k}',1)" class="tall-btn">＋</button>
+                            </div>`).join('')}
                     </div>
 
-                    <div class="player-details space-y-4">
-                        <div class="grid grid-cols-3 gap-2">${gridHtml}</div>
+                    <div class="grid grid-cols-3 gap-2 mb-4">${gridHtml}</div>
 
-                        <div class="grid grid-cols-3 gap-2">
-                            ${[{k:'str',l:'武力',v:p.totalStr,tag:p.hasGun?'(持槍)':''},{k:'spd',l:'速度',v:p.finalSpdText},{k:'lod',l:'負重',v:p.lod}].map(a => `
-                                <div class="bg-slate-950/40 rounded-xl overflow-hidden flex justify-between items-center border border-slate-800">
-                                    <button onclick="event.stopPropagation(); changeAttr(${p.uid},'${a.k}',-1)" class="tall-btn">－</button>
-                                    <div class="text-center py-1">
-                                        <div class="text-[9px] font-bold text-slate-500 leading-none">${a.l}${a.tag?`<br><span class=\"gun-tag\">${a.tag}</span>`:''}</div>
-                                        <div class="text-xs font-black text-white mt-1">${a.v}</div>
-                                    </div>
-                                    <button onclick="event.stopPropagation(); changeAttr(${p.uid},'${a.k}',1)" class="tall-btn">＋</button>
-                                </div>`).join('')}
-                        </div>
-
-                        <div class="flex justify-between items-center text-[10px] font-bold text-slate-600">
-                            <div class="flex flex-wrap gap-2 items-center">
-                                <span class="${p.overweight ? 'text-red-400 font-black' : ''}">負重: ${p.weightUsed}/${p.items.dimensionPocket ? '∞' : p.lod}</span>
-                                ${p.gasStatus ? '<span class="px-2 py-1 rounded-lg bg-red-500/20 text-red-300">毒氣判定</span>' : ''}
-                            </div>
+                    <div class="flex justify-between items-center text-[10px] font-bold text-slate-600">
+                        <label class="flex items-center gap-2"><input type="checkbox" ${p.gasStatus ? 'checked' : ''} onchange="updatePlayer(${p.uid}, 'gasStatus', this.checked)"> 毒氣區</label>
+                        <div class="flex gap-3">
+                            <span class="${p.overweight ? 'text-red-500 font-black' : ''}">負重: ${p.weightUsed}/${p.items.dimensionPocket ? '∞' : p.lod}</span>
                             <button onclick="removePlayer(${p.uid})" class="hover:text-red-500">移除玩家</button>
                         </div>
                     </div>`;
@@ -451,52 +263,26 @@
             });
         }
 
-        function renderActiveSelect() {
-            const sel = document.getElementById('activePlayerSelect');
-            if (!sel) return;
-            sel.innerHTML = '<option value="">未選擇</option>';
-            players.forEach(p => {
-                const opt = document.createElement('option');
-                opt.value = p.uid;
-                opt.textContent = p.name;
-                sel.appendChild(opt);
-            });
-            sel.value = selectedUid ?? '';
-        }
-
         function renderZones() {
-            const overlay = document.getElementById('interactionOverlay'); overlay.innerHTML = '';
+            const overlay = document.getElementById('interactionOverlay'); overlay.innerHTML = ''; 
             const occupants = {}; const bombedRooms = new Set();
-            players.forEach(p => {
-                if(p.currentRoomId) (occupants[p.currentRoomId] = occupants[p.currentRoomId] || []).push(p.name);
+            players.forEach(p => { 
+                if(p.currentRoomId) (occupants[p.currentRoomId] = occupants[p.currentRoomId] || []).push(p.name); 
                 if(p.items?.rocketLauncher && p.rocketTarget) bombedRooms.add(p.rocketTarget.toUpperCase());
             });
-
-            const mapTip = document.getElementById('mapStatusTip');
-            if (isAimingMode) {
-                mapTip.textContent = '⚠️ 請在地圖上點選轟炸目標房間 ⚠️';
-            } else if (isMoveMode) {
-                mapTip.textContent = '⚠️ 請在地圖上點選移動目標房間 ⚠️';
-            }
-            mapTip.classList.toggle('hidden', !(isAimingMode || isMoveMode));
-
+            document.getElementById('mapStatusTip').classList.toggle('hidden', !isAimingMode);
             mapConfig.forEach(conf => {
-                const zone = document.createElement('div');
+                const zone = document.createElement('div'); 
                 const p = selectedUid ? players.find(x => x.uid === selectedUid) : null;
                 const isCurrentLoc = p && p.currentRoomId === conf.id;
                 const isBombed = bombedRooms.has(conf.id.toUpperCase());
-                zone.className = `room-zone ${isCurrentLoc ? 'room-target' : ''} ${isBombed ? 'room-bombed' : ''}`;
+                zone.className = `room-zone ${isCurrentLoc ? 'room-target' : ''} ${isBombed ? 'room-bombed' : ''}`; 
                 zone.style.cssText = `left:${conf.x}%; top:${conf.y}%; width:${conf.w}%; height:${conf.h}%;`;
-                if (occupants[conf.id]) {
-                    const wrap = document.createElement('div');
-                    wrap.className = 'occupant-stack';
-                    occupants[conf.id].forEach(name => {
-                        const tag = document.createElement('div');
-                        tag.className = 'occupant-tag';
-                        tag.innerText = name;
-                        wrap.appendChild(tag);
-                    });
-                    zone.appendChild(wrap);
+                if (occupants[conf.id]) { 
+                    const tag = document.createElement('div'); const count = occupants[conf.id].length; 
+                    tag.className = `occupant-tag`; 
+                    tag.innerText = count > 1 ? `${occupants[conf.id][0]}+` : occupants[conf.id][0]; 
+                    zone.appendChild(tag); 
                 }
                 zone.onclick = (e) => { e.stopPropagation(); moveOrTarget(conf.id); }; overlay.appendChild(zone);
             });
@@ -512,13 +298,8 @@
             }); 
         }
 
-        function removePlayer(uid) {
-            if(confirm('確定移除玩家？')) {
-                players = players.filter(x => x.uid !== uid);
-                if (selectedUid === uid) selectedUid = players[0]?.uid || null;
-                renderAll(); save();
-            }
-        }
+        function updatePlayer(uid, field, val) { const p = players.find(x => x.uid === uid); if(p) { p[field] = val; renderAll(); save(); } }
+        function removePlayer(uid) { if(confirm('確定移除玩家？')) { players = players.filter(x => x.uid !== uid); renderAll(); save(); } }
         function resetData() { if(confirm('抹除所有緩存數據？')) { players = []; localStorage.removeItem(STORAGE_KEY); renderAll(); } }
     </script>
 </body>
