@@ -112,11 +112,7 @@
     <div id="topDrawer" data-state="closed" class="drawer-panel fixed left-1/2 -translate-x-1/2 top-3 w-[96vw] max-w-[1400px] bg-slate-900/95 border border-slate-800 rounded-2xl shadow-2xl transition-all duration-300" style="transform: translate(-50%, -82%);">
         <button id="topHandle" class="drawer-handle left-1/2 -translate-x-1/2 bottom-[-14px] px-4 py-1" onclick="toggleDrawer('top')">玩家表</button>
         <div class="p-4">
-            <div class="flex justify-between items-center mb-2 gap-3 flex-wrap">
-                <div class="flex items-center gap-3 flex-wrap">
-                    <h2 class="text-lg font-black text-white cursor-pointer" onclick="toggleDrawer('top')">回合摘要</h2>
-                    <div id="poisonSummary" class="flex flex-wrap gap-2"></div>
-                </div>
+            <div class="flex justify-end mb-2">
                 <div id="mapStatusTip" class="bg-red-600/20 text-red-500 text-[10px] font-black px-3 py-1 rounded-xl text-center uppercase tracking-widest hidden border border-red-600/30">⚠️ 請在地圖上點選房間 ⚠️</div>
             </div>
             <div class="bg-slate-900/60 rounded-2xl border border-slate-800 overflow-hidden">
@@ -125,6 +121,16 @@
                         <tr><th class="p-3">受試者</th><th class="p-3">位置</th><th class="p-3">力(總)/速/負</th><th class="p-3 text-right">預期 HP</th></tr>
                     </thead>
                     <tbody id="summaryTableBody" class="divide-y divide-slate-800/50"></tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="4" class="p-3 bg-slate-900/80 border-t border-slate-800">
+                                <div class="flex flex-wrap items-center gap-2 justify-between">
+                                    <div id="roundSummaryText" class="flex items-center gap-2"></div>
+                                    <div id="poisonSummary" class="flex flex-wrap gap-2"></div>
+                                </div>
+                            </td>
+                        </tr>
+                    </tfoot>
                 </table>
             </div>
         </div>
@@ -403,12 +409,16 @@
 
         function renderPoisonState() {
             const summary = document.getElementById('poisonSummary');
+            const roundSummary = document.getElementById('roundSummaryText');
             const collapsed = document.getElementById('topCollapsedSummary');
             const topDrawer = document.getElementById('topDrawer');
             const locked = new Set(lockedPoisonFloors);
             const winners = getWinningPoisonFloors();
             const pending = Array.from(winners).filter(f => !locked.has(f));
             const chipDefs = [];
+
+            const roundSel = document.getElementById('gameRound');
+            const roundText = roundSel?.options[roundSel.selectedIndex]?.textContent || '';
 
             if (locked.size === 0) {
                 chipDefs.push({ label: '目前無毒氣樓層', className: 'bg-slate-800 text-slate-400 border border-slate-700' });
@@ -435,6 +445,11 @@
             const makeChipHtml = (label, color) => `<span class="px-2 py-1 rounded-lg text-[10px] font-black ${color}">${label}</span>`;
             const chipsHtml = chipDefs.map(def => makeChipHtml(def.label, def.className)).join('');
 
+            if (roundSummary) {
+                roundSummary.innerHTML = `<span class="text-[10px] text-slate-400 font-black uppercase tracking-widest">回合摘要</span>` +
+                    `<span class="text-[11px] text-amber-300 font-bold">${roundText}</span>`;
+            }
+
             if (summary) {
                 summary.innerHTML = `<span class="text-[10px] text-slate-400 font-black uppercase tracking-widest">毒氣狀態</span>${chipsHtml}`;
             }
@@ -443,8 +458,6 @@
                 const isClosed = (topDrawer?.dataset.state || 'open') === 'closed';
                 collapsed.classList.toggle('hidden', !isClosed);
                 if (isClosed) {
-                    const roundSel = document.getElementById('gameRound');
-                    const roundText = roundSel?.options[roundSel.selectedIndex]?.textContent || '';
                     collapsed.innerHTML = `<div class="bg-slate-900/80 border border-slate-800 rounded-xl px-4 py-2 shadow-xl inline-flex flex-wrap items-center justify-center gap-2 pointer-events-auto">` +
                         `<span class="text-xs font-black text-white">回合摘要</span>` +
                         `<span class="text-[11px] text-amber-300 font-bold">${roundText}</span>` +
