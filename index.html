@@ -101,12 +101,6 @@
                 </div>
                 <div id="clearRoomHelper" class="text-[10px] text-slate-500">選擇房間後按解除</div>
             </div>
-            <div class="space-y-1">
-                <label class="text-[10px] uppercase tracking-widest text-slate-500 font-black">毒氣樓層狀態</label>
-                <div id="poisonFloorChips" class="flex flex-wrap gap-2"></div>
-                <label class="text-[10px] uppercase tracking-widest text-slate-500 font-black">已解除的房間</label>
-                <div id="clearedRoomChips" class="flex flex-wrap gap-2"></div>
-            </div>
             <div class="grid grid-cols-2 gap-2">
                 <button onclick="processTurn()" class="bg-emerald-600 py-3 rounded-xl font-black text-white text-sm uppercase">回合結算</button>
                 <button onclick="resetData()" class="bg-slate-800 py-3 rounded-xl text-slate-400 font-bold text-xs">清空數據</button>
@@ -118,8 +112,11 @@
     <div id="topDrawer" data-state="closed" class="drawer-panel fixed left-1/2 -translate-x-1/2 top-3 w-[96vw] max-w-[1400px] bg-slate-900/95 border border-slate-800 rounded-2xl shadow-2xl transition-all duration-300" style="transform: translate(-50%, -82%);">
         <button id="topHandle" class="drawer-handle left-1/2 -translate-x-1/2 bottom-[-14px] px-4 py-1" onclick="toggleDrawer('top')">玩家表</button>
         <div class="p-4">
-            <div class="flex justify-between items-center mb-2">
-                <h2 class="text-lg font-black text-white cursor-pointer" onclick="toggleDrawer('top')">回合摘要</h2>
+            <div class="flex justify-between items-center mb-2 gap-3 flex-wrap">
+                <div class="flex items-center gap-3 flex-wrap">
+                    <h2 class="text-lg font-black text-white cursor-pointer" onclick="toggleDrawer('top')">回合摘要</h2>
+                    <div id="poisonSummary" class="flex flex-wrap gap-2"></div>
+                </div>
                 <div id="mapStatusTip" class="bg-red-600/20 text-red-500 text-[10px] font-black px-3 py-1 rounded-xl text-center uppercase tracking-widest hidden border border-red-600/30">⚠️ 請在地圖上點選房間 ⚠️</div>
             </div>
             <div class="bg-slate-900/60 rounded-2xl border border-slate-800 overflow-hidden">
@@ -216,7 +213,7 @@
             const counts = {};
             players.forEach(p => {
                 const floor = (p.poisonFloor || '').toUpperCase();
-                if (!floor) return;
+                if (!floor || lockedPoisonFloors.has(floor)) return;
                 const weight = p.tenVote ? 10 : 1;
                 counts[floor] = (counts[floor] || 0) + weight;
             });
@@ -377,11 +374,13 @@
             const clearSelect = document.getElementById('clearRoomSelect');
             const existing = clearSelect.value;
             clearSelect.innerHTML = '<option value="">-- 無 --</option>';
+            const activeFloors = getActivePoisonFloors();
             mapConfig.forEach(r => {
+                if (!isRoomPoisoned(r.id, activeFloors)) return;
                 const opt = document.createElement('option');
                 opt.value = r.id;
                 opt.textContent = `${r.id} ${r.name}`;
-                if (clearedRooms.has(r.id) || r.id === existing) opt.selected = true;
+                if (r.id === existing) opt.selected = true;
                 clearSelect.appendChild(opt);
             });
         }
@@ -401,11 +400,9 @@
         }
 
         function renderPoisonState() {
-            const chipBox = document.getElementById('poisonFloorChips');
-            const clearedBox = document.getElementById('clearedRoomChips');
-            if (!chipBox || !clearedBox) return;
-            chipBox.innerHTML = '';
-            clearedBox.innerHTML = '';
+            const summary = document.getElementById('poisonSummary');
+            if (!summary) return;
+            summary.innerHTML = '';
             const active = getActivePoisonFloors();
             const winners = getWinningPoisonFloors();
 
@@ -416,20 +413,24 @@
                 return span;
             };
 
+            const label = document.createElement('span');
+            label.className = 'text-[10px] text-slate-400 font-black uppercase tracking-widest';
+            label.textContent = '毒氣狀態';
+            summary.appendChild(label);
+
             if (active.size === 0) {
-                chipBox.appendChild(makeChip('目前無毒氣樓層', 'bg-slate-800 text-slate-400 border border-slate-700'));
+                summary.appendChild(makeChip('目前無毒氣樓層', 'bg-slate-800 text-slate-400 border border-slate-700'));
             } else {
                 Array.from(active).sort().forEach(floor => {
                     const isNew = winners.has(floor) && !lockedPoisonFloors.has(floor);
-                    chipBox.appendChild(makeChip(`${floor}${isNew ? ' (新)' : ''}`, 'bg-emerald-500/20 text-emerald-200 border border-emerald-500/40'));
+                    summary.appendChild(makeChip(`${floor}${isNew ? ' (新)' : ''}`, 'bg-emerald-500/20 text-emerald-200 border border-emerald-500/40'));
                 });
             }
 
-            if (clearedRooms.size === 0) {
-                clearedBox.appendChild(makeChip('尚未解除任何房間', 'bg-slate-800 text-slate-400 border border-slate-700'));
-            } else {
+            if (clearedRooms.size > 0) {
+                summary.appendChild(makeChip('已解除', 'bg-amber-500/20 text-amber-200 border border-amber-500/40'));
                 Array.from(clearedRooms).sort().forEach(room => {
-                    clearedBox.appendChild(makeChip(room, 'bg-amber-500/20 text-amber-200 border border-amber-500/40'));
+                    summary.appendChild(makeChip(room, 'bg-amber-500/20 text-amber-200 border border-amber-500/40'));
                 });
             }
         }
@@ -481,10 +482,11 @@
             }).join('');
 
             const poisonFloorOptions = ['', '2F', '1F', 'B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7'];
+            const availableFloors = poisonFloorOptions.filter(f => !lockedPoisonFloors.has(f) || f === p.poisonFloor);
             const poisonSelect = `
                 <select class="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-xs font-black"
                     onchange="updatePlayer(${p.uid}, 'poisonFloor', this.value)">
-                    ${poisonFloorOptions.map(v => `<option value="${v}" ${(p.poisonFloor === v || (!p.poisonFloor && v === '')) ? 'selected' : ''}>${v || '未選擇'}</option>`).join('')}
+                    ${availableFloors.map(v => `<option value="${v}" ${(p.poisonFloor === v || (!p.poisonFloor && v === '')) ? 'selected' : ''} ${lockedPoisonFloors.has(v) && v === p.poisonFloor ? 'disabled' : ''}>${v ? (lockedPoisonFloors.has(v) ? v + '（已毒）' : v) : '未選擇'}</option>`).join('')}
                 </select>`;
 
             container.innerHTML = `
