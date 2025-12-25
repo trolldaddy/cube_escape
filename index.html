@@ -58,6 +58,7 @@
         /* 抽屜樣式 */
         .drawer-handle { position: absolute; background: #1e293b; color: #cbd5e1; border: 1px solid #334155; border-radius: 9999px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; z-index: 50; }
         .drawer-panel { backdrop-filter: blur(6px); z-index: 40; }
+        #leftHandle { writing-mode: vertical-rl; text-orientation: mixed; letter-spacing: 2px; }
 
         /* 地圖微調位置，避免底部抽屜遮擋 */
         .map-stage { transform: translateY(-48px); }
@@ -68,8 +69,8 @@
 </head>
 <body class="p-3 lg:p-6 min-h-screen relative overflow-hidden">
     <!-- 左側抽屜：通用控制 -->
-    <div id="leftDrawer" data-state="closed" class="drawer-panel fixed left-4 top-1/2 w-80 max-w-[90vw] bg-slate-900/95 border border-slate-800 rounded-2xl shadow-2xl transition-all duration-300" style="transform: translate(-60%, -50%);">
-        <button id="leftHandle" class="drawer-handle -right-10 top-1/2 -translate-y-1/2 px-3 py-2" onclick="toggleDrawer('left')">≡</button>
+    <div id="leftDrawer" data-state="closed" class="drawer-panel fixed left-4 top-1/2 w-80 max-w-[90vw] bg-slate-900/95 border border-slate-800 rounded-2xl shadow-2xl transition-all duration-300" style="transform: translate(-92%, -50%);">
+        <button id="leftHandle" class="drawer-handle -right-10 top-1/2 -translate-y-1/2 px-2 py-3" onclick="toggleDrawer('left')">控制面板</button>
         <div class="p-4 space-y-4">
             <div class="flex items-center justify-between">
                 <h2 class="text-lg font-black text-white">控制面板</h2>
@@ -163,7 +164,7 @@
             const el = which === 'top' ? document.getElementById('topDrawer') : which === 'left' ? document.getElementById('leftDrawer') : document.getElementById('bottomDrawer');
             const transforms = {
                 top: { open: 'translate(-50%, 0)', closed: 'translate(-50%, -82%)' },
-                left: { open: 'translate(0, -50%)', closed: 'translate(-60%, -50%)' },
+                left: { open: 'translate(0, -50%)', closed: 'translate(-92%, -50%)' },
                 bottom: { open: 'translate(-50%, 0)', closed: 'translate(-50%, 70%)' }
             };
             const desired = targetState || (el.dataset.state === 'open' ? 'closed' : 'open');
