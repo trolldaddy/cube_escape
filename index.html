@@ -17,9 +17,9 @@
         .drawer-top.open { transform: translate(-50%, 0); }
         .drawer-left { left: 12px; top: 50%; transform: translate(-102%, -50%); width: 320px; padding: 18px; max-height: calc(100vh - 80px); overflow-y: auto; }
         .drawer-left.open { transform: translate(0, -50%); }
-        .drawer-right { right: 12px; top: 50%; transform: translate(102%, -50%); width: 420px; padding: 18px; max-height: calc(100vh - 80px); overflow: hidden; display: flex; flex-direction: column; }
+        .drawer-right { right: 12px; top: 50%; transform: translate(102%, -50%); width: 460px; padding: 18px; max-height: calc(100vh - 80px); overflow: hidden; display: flex; flex-direction: column; }
         .drawer-right.open { transform: translate(0, -50%); }
-        .drawer-right.peek { transform: translate(calc(100% - 240px), -50%); max-height: 360px; }
+        .drawer-right.peek { transform: translate(calc(100% - 260px), -50%); max-height: 380px; padding: 18px 10px 18px 18px; }
         .drawer-handle { position: fixed; z-index: 70; background: #1d4ed8; color: white; border-radius: 9999px; padding: 10px 14px; font-weight: 900; font-size: 12px; letter-spacing: 0.5px; box-shadow: 0 10px 30px rgba(37,99,235,0.5); }
         .drawer-handle:hover { background: #2563eb; }
         .handle-top { top: 12px; left: 50%; transform: translateX(-50%); }
@@ -77,9 +77,11 @@
         .action-btn { background-color: #facc15; color: #000; font-size: 10px; font-weight: 900; padding: 4px 8px; border-radius: 6px; margin-top: 4px; transition: all 0.2s; }
         .action-btn-used { background-color: #475569; color: #cbd5e1; }
         .player-card-active { ring: 2px solid #3b82f6; background-color: #0f172a !important; border-color: #3b82f6 !important; }
+        .drawer-right .player-card-shell { display: grid; grid-template-columns: 260px 1fr; gap: 12px; align-items: start; }
+        .drawer-right.peek .player-card-shell { grid-template-columns: 1fr; }
         .drawer-right.peek .player-details { display: none; }
-        .drawer-right.peek #playerList { max-height: 280px !important; }
-        .drawer-right.peek .player-card-shell { padding-right: 10px; }
+        .drawer-right.peek #playerList { max-height: 300px !important; }
+        .drawer-right .player-peek { min-width: 240px; }
 
         /* 平板裝置適配 */
         body { -webkit-tap-highlight-color: transparent; }
@@ -209,10 +211,16 @@
         let isMoveMode = false;
         const drawerState = { top: true, left: true, right: true };
         const STORAGE_KEY = 'cube_escape_v8_refined';
+        const GAS_ROOM_PREFIXES = ['B'];
         const mapConfig = [{"id":"201","name":"基因庫","x":27.65,"y":8.31,"w":18.41,"h":10.51},{"id":"202","name":"停機坪","x":67.44,"y":9.76,"w":23.60,"h":8.56},{"id":"101","name":"水塔","x":16.44,"y":18.17,"w":6.03,"h":9.91},{"id":"102","name":"激光室","x":27.87,"y":18.72,"w":18.20,"h":8.86},{"id":"103","name":"*","x":68.92,"y":18.72,"w":6.88,"h":8.71},{"id":"104","name":"#","x":76.54,"y":18.57,"w":14.39,"h":9.01},{"id":"B101","name":"控制室","x":9.24,"y":28.18,"w":6.88,"h":9.16},{"id":"B102","name":"#","x":16.54,"y":28.48,"w":5.61,"h":9.01},{"id":"B103","name":"*","x":22.89,"y":28.33,"w":4.44,"h":9.16},{"id":"B104","name":"#","x":27.87,"y":28.48,"w":18.10,"h":9.01},{"id":"B105","name":"回收站","x":46.70,"y":28.63,"w":10.58,"h":8.71},{"id":"B106","name":"#","x":72.52,"y":28.63,"w":7.20,"h":9.01},{"id":"B107","name":"武器庫","x":80.14,"y":28.43,"w":10.58,"h":9.01},{"id":"B201","name":"#","x":9.14,"y":38.34,"w":10.58,"h":9.01},{"id":"B202","name":"手術室","x":20.35,"y":38.49,"w":7.09,"h":8.56},{"id":"B203","name":"#","x":27.87,"y":38.24,"w":10.69,"h":8.86},{"id":"B204","name":"餐廳","x":38.87,"y":38.24,"w":7.20,"h":9.16},{"id":"B205","name":"#","x":46.70,"y":38.24,"w":6.67,"h":9.16},{"id":"B206","name":"金庫","x":68.92,"y":38.19,"w":21.80,"h":9.31},{"id":"B301","name":"藥房","x":9.14,"y":48.10,"w":6.77,"h":8.71},{"id":"B302","name":"#","x":16.65,"y":47.95,"w":6.88,"h":9.16},{"id":"B303","name":"*","x":24.06,"y":48.10,"w":6.88,"h":9.01},{"id":"B304","name":"操作室","x":31.46,"y":48.10,"w":7.20,"h":8.86},{"id":"B305","name":"#","x":39.08,"y":47.95,"w":14.39,"h":9.01},{"id":"B306","name":"#","x":68.92,"y":47.95,"w":4.44,"h":9.01},{"id":"B307","name":"*","x":73.90,"y":47.80,"w":9.63,"h":9.61},{"id":"B308","name":"#","x":83.84,"y":47.95,"w":7.20,"h":9.16},{"id":"B401","name":"#","x":31.57,"y":57.86,"w":14.39,"h":9.01},{"id":"B402","name":"*","x":46.60,"y":57.71,"w":6.67,"h":9.31},{"id":"B403","name":"傳送室","x":68.92,"y":57.71,"w":6.88,"h":9.16},{"id":"B404","name":"#","x":76.44,"y":57.86,"w":6.88,"h":8.71},{"id":"B405","name":"#","x":83.74,"y":57.86,"w":6.98,"h":9.01},{"id":"B501","name":"大倉庫","x":9.14,"y":57.86,"w":21.69,"h":18.62},{"id":"B502","name":"#","x":31.57,"y":67.62,"w":10.58,"h":8.86},{"id":"B503","name":"垃圾場","x":42.79,"y":67.77,"w":14.39,"h":9.01},{"id":"B504","name":"#","x":68.92,"y":67.77,"w":10.58,"h":9.01},{"id":"B505","name":"糧倉","x":80.14,"y":67.62,"w":10.79,"h":9.16},{"id":"B601","name":"酒窖","x":27.87,"y":77.23,"w":17.99,"h":9.31},{"id":"B602","name":"#","x":46.49,"y":77.38,"w":10.69,"h":9.01},{"id":"B603","name":"*","x":57.71,"y":77.38,"w":10.58,"h":9.01},{"id":"B604","name":"#","x":68.92,"y":77.38,"w":10.69,"h":9.01},{"id":"B701","name":"停屍間","x":46.81,"y":87.29,"w":10.26,"h":9.01}];
         
         window.onload = () => { const saved = localStorage.getItem(STORAGE_KEY); if (saved) players = JSON.parse(saved); renderAll(); };
         function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(players)); }
+
+        function isGasRoom(roomId) {
+            if (!roomId) return false;
+            return GAS_ROOM_PREFIXES.some(prefix => roomId.toUpperCase().startsWith(prefix.toUpperCase()));
+        }
 
         function toggleDrawer(key) { drawerState[key] = !drawerState[key]; applyDrawerState(); }
         function setRightOpen(val) { drawerState.right = val; applyDrawerState(); }
@@ -236,18 +244,20 @@
                 let dmg = 0; let weightUsed = 0;
                 // 小刀改為 +2
                 let weaponStrBonus = (p.weapons.shotgun * 4) + (p.weapons.pistol * 2) + (p.weapons.knife * 2);
-                
+
+                const gasStatus = isGasRoom(p.currentRoomId);
+
                 weightUsed += (p.items.mask?1:0) + (p.items.rope?1:0) + (p.items.adrenaline?1:0) + (p.items.recycler?1:0) + (p.items.rocketLauncher?1:0);
                 weightUsed += (p.weapons.shotgun || 0) + (p.weapons.pistol || 0) + (p.weapons.knife || 0);
 
-                if (!p.items.mask && p.gasStatus && !p.isShadow) dmg += gasDmg;
+                if (!p.items.mask && gasStatus && !p.isShadow) dmg += gasDmg;
                 players.forEach(other => { if (other.items.rocketLauncher && other.rocketTarget && p.currentRoomId?.toUpperCase() === other.rocketTarget.toUpperCase()) dmg += 4; });
-                
+
                 const finalSpdText = p.items.adrenaline ? `${p.spd} (10)` : p.spd;
                 const totalStr = p.str + weaponStrBonus;
                 const hasGun = (p.weapons.shotgun > 0) || (p.weapons.pistol > 0);
 
-                return { ...p, totalStr, expectedDmg: dmg, newHp: Math.max(0, p.hp - dmg), finalSpdText, weightUsed, overweight: !p.items.dimensionPocket && weightUsed > p.lod, hasGun };
+                return { ...p, gasStatus, totalStr, expectedDmg: dmg, newHp: Math.max(0, p.hp - dmg), finalSpdText, weightUsed, overweight: !p.items.dimensionPocket && weightUsed > p.lod, hasGun };
             });
         }
 
@@ -321,7 +331,7 @@
         }
 
         function processTurn() { const data = getCalculatedState(); let html = ''; data.forEach(p => { if (p.expectedDmg > 0) html += `<div><b>${p.name}</b> 受傷 ${p.expectedDmg} (HP: ${p.hp} -> ${p.newHp})</div>`; }); document.getElementById('resultContent').innerHTML = html || '本回合無人受傷'; document.getElementById('resultModal').classList.remove('hidden'); }
-        function confirmSettle() { const data = getCalculatedState(); players = data.map(p => ({ ...p, hp: p.newHp, gasStatus: false, rocketTarget: '', recyclerUsed: false, items: { ...p.items, adrenaline: false }})); document.getElementById('resultModal').classList.add('hidden'); renderAll(); save(); }
+        function confirmSettle() { const data = getCalculatedState(); players = data.map(p => ({ ...p, hp: p.newHp, rocketTarget: '', recyclerUsed: false, items: { ...p.items, adrenaline: false }})); document.getElementById('resultModal').classList.add('hidden'); renderAll(); save(); }
         
         function renderAll() {
             if (selectedUid && !players.some(p => p.uid === selectedUid)) selectedUid = players[0]?.uid || null;
@@ -387,39 +397,54 @@
                 }).join('');
 
                 card.innerHTML = `
-                    <div class="flex justify-between items-center mb-3">
-                        <div class="flex items-center gap-3">
-                            <span class="text-xl font-black text-white">${p.name}</span>
-                            <button onclick="event.stopPropagation(); startMoveMode(${p.uid});" class="px-3 py-1 rounded-lg text-xs font-black bg-slate-800 text-blue-200 hover:bg-slate-700">移動</button>
-                            <span class="room-badge">${p.currentRoomId || '??'}</span>
+                    <div class="player-peek space-y-3">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="text-xl font-black text-white">${p.name}</span>
+                                <button onclick="event.stopPropagation(); startMoveMode(${p.uid});" class="px-3 py-1 rounded-lg text-xs font-black bg-slate-800 text-blue-200 hover:bg-slate-700">移動</button>
+                                <span class="room-badge">${p.currentRoomId || '??'}</span>
+                                ${p.gasStatus ? '<span class="px-2 py-1 rounded-lg bg-red-500/20 text-red-300 text-[10px] font-black">毒氣樓層</span>' : ''}
+                            </div>
+                            <span class="text-2xl font-black ${p.hp <= 3 ? 'text-red-500' : 'text-green-500'}">${p.hp}</span>
                         </div>
-                        <div class="flex items-center gap-2">
-                             <span class="text-2xl font-black ${p.hp <= 3 ? 'text-red-500' : 'text-green-500'}">${p.hp}</span>
+                        <div class="flex items-center gap-2 text-[11px] font-bold text-slate-300 flex-wrap">
+                            <div class="flex items-center gap-1 bg-slate-800/80 rounded-xl px-3 py-2">
+                                <span class="text-slate-500">武力</span>
+                                <span class="text-white text-sm font-black">${p.totalStr}</span>
+                            </div>
+                            <div class="flex items-center gap-1 bg-slate-800/80 rounded-xl px-3 py-2">
+                                <span class="text-slate-500">速度</span>
+                                <span class="text-white text-sm font-black">${p.finalSpdText}</span>
+                            </div>
+                            <div class="flex items-center gap-1 bg-slate-800/80 rounded-xl px-3 py-2">
+                                <span class="text-slate-500">負重</span>
+                                <span class="text-white text-sm font-black">${p.items.dimensionPocket ? '∞' : p.lod}</span>
+                            </div>
                         </div>
-                    </div>
-                    <div class="hp-grid mb-4">${hpHtml}</div>
-
-                    <div class="grid grid-cols-3 gap-2 mb-4">
-                        ${[{k:'str',l:'武力',v:p.totalStr,tag:p.hasGun?'(持槍)':''},{k:'spd',l:'速度',v:p.finalSpdText},{k:'lod',l:'負重',v:p.lod}].map(a => `
-                            <div class="bg-slate-950/40 rounded-xl overflow-hidden flex justify-between items-center border border-slate-800">
-                                <button onclick="event.stopPropagation(); changeAttr(${p.uid},'${a.k}',-1)" class="tall-btn">－</button>
-                                <div class="text-center py-1">
-                                    <div class="text-[9px] font-bold text-slate-500 leading-none">${a.l}${a.tag?`<br><span class=\"gun-tag\">${a.tag}</span>`:''}</div>
-                                    <div class="text-xs font-black text-white mt-1">${a.v}</div>
-                                </div>
-                                <button onclick="event.stopPropagation(); changeAttr(${p.uid},'${a.k}',1)" class="tall-btn">＋</button>
-                            </div>`).join('')}
+                        <div class="hp-grid">${hpHtml}</div>
                     </div>
 
-                    <div class="player-details">
-                        <div class="grid grid-cols-3 gap-2 mb-4">${gridHtml}</div>
+                    <div class="player-details space-y-4">
+                        <div class="grid grid-cols-3 gap-2">${gridHtml}</div>
+
+                        <div class="grid grid-cols-3 gap-2">
+                            ${[{k:'str',l:'武力',v:p.totalStr,tag:p.hasGun?'(持槍)':''},{k:'spd',l:'速度',v:p.finalSpdText},{k:'lod',l:'負重',v:p.lod}].map(a => `
+                                <div class="bg-slate-950/40 rounded-xl overflow-hidden flex justify-between items-center border border-slate-800">
+                                    <button onclick="event.stopPropagation(); changeAttr(${p.uid},'${a.k}',-1)" class="tall-btn">－</button>
+                                    <div class="text-center py-1">
+                                        <div class="text-[9px] font-bold text-slate-500 leading-none">${a.l}${a.tag?`<br><span class=\"gun-tag\">${a.tag}</span>`:''}</div>
+                                        <div class="text-xs font-black text-white mt-1">${a.v}</div>
+                                    </div>
+                                    <button onclick="event.stopPropagation(); changeAttr(${p.uid},'${a.k}',1)" class="tall-btn">＋</button>
+                                </div>`).join('')}
+                        </div>
 
                         <div class="flex justify-between items-center text-[10px] font-bold text-slate-600">
-                            <label class="flex items-center gap-2"><input type="checkbox" ${p.gasStatus ? 'checked' : ''} onchange="updatePlayer(${p.uid}, 'gasStatus', this.checked)"> 毒氣區</label>
-                            <div class="flex gap-3">
-                                <span class="${p.overweight ? 'text-red-500 font-black' : ''}">負重: ${p.weightUsed}/${p.items.dimensionPocket ? '∞' : p.lod}</span>
-                                <button onclick="removePlayer(${p.uid})" class="hover:text-red-500">移除玩家</button>
+                            <div class="flex flex-wrap gap-2 items-center">
+                                <span class="${p.overweight ? 'text-red-400 font-black' : ''}">負重: ${p.weightUsed}/${p.items.dimensionPocket ? '∞' : p.lod}</span>
+                                ${p.gasStatus ? '<span class="px-2 py-1 rounded-lg bg-red-500/20 text-red-300">毒氣判定</span>' : ''}
                             </div>
+                            <button onclick="removePlayer(${p.uid})" class="hover:text-red-500">移除玩家</button>
                         </div>
                     </div>`;
                 list.appendChild(card);
@@ -487,7 +512,6 @@
             }); 
         }
 
-        function updatePlayer(uid, field, val) { const p = players.find(x => x.uid === uid); if(p) { p[field] = val; renderAll(); save(); } }
         function removePlayer(uid) {
             if(confirm('確定移除玩家？')) {
                 players = players.filter(x => x.uid !== uid);
