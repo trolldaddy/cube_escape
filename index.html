@@ -58,6 +58,12 @@
         /* 抽屜樣式 */
         .drawer-handle { position: absolute; background: #1e293b; color: #cbd5e1; border: 1px solid #334155; border-radius: 9999px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; z-index: 50; }
         .drawer-panel { backdrop-filter: blur(6px); z-index: 40; }
+
+        /* 地圖微調位置，避免底部抽屜遮擋 */
+        .map-stage { transform: translateY(-48px); }
+        @media (max-width: 640px) {
+            .map-stage { transform: translateY(-32px); }
+        }
     </style>
 </head>
 <body class="p-3 lg:p-6 min-h-screen relative overflow-hidden">
@@ -116,7 +122,7 @@
     </div>
 
     <!-- 置中地圖 -->
-    <div class="relative flex items-center justify-center min-h-screen z-10">
+    <div class="relative flex items-center justify-center min-h-screen z-10 map-stage">
         <div class="bg-slate-900/40 rounded-[2rem] border border-slate-800/50 p-4 flex items-center justify-center min-h-[500px] max-w-[90vw]">
             <div id="mapContainer">
                 <img id="bgMapImage" src="https://raw.githubusercontent.com/trolldaddy/cube_escape/b03b1311f1a19acb5841f42579a0e78f2033ce48/p650925325.jpg" alt="地圖" onload="renderZones()">
