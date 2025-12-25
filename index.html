@@ -16,6 +16,7 @@
         .room-zone { position: absolute; cursor: pointer; border: 1px solid transparent; transition: all 0.2s; display: flex; align-items: center; justify-content: center; }
         .room-target { background-color: rgba(59, 130, 246, 0.2) !important; border: 2px solid #3b82f6 !important; }
         .room-bombed { background-color: rgba(239, 68, 68, 0.3) !important; border: 2px solid #ef4444 !important; animation: bomb-pulse 1s infinite; }
+        .room-poison { background-color: rgba(34, 197, 94, 0.2) !important; border: 2px solid #22c55e !important; }
         @keyframes bomb-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 
         /* HP 網格 */
@@ -92,9 +93,19 @@
             </div>
             <div class="space-y-2">
                 <label class="text-[10px] uppercase tracking-widest text-slate-500 font-black">控制室解除毒氣房間</label>
-                <select id="clearRoomSelect" onchange="updateClearedRoom(this.value)" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 font-bold text-sm">
-                    <option value="">-- 無 --</option>
-                </select>
+                <div class="flex gap-2">
+                    <select id="clearRoomSelect" onchange="updateClearedRoom(this.value)" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 font-bold text-sm">
+                        <option value="">-- 無 --</option>
+                    </select>
+                    <button onclick="applyClearedRoom()" class="px-3 py-2 bg-amber-500 text-black font-black rounded-xl text-xs">解除</button>
+                </div>
+                <div id="clearRoomHelper" class="text-[10px] text-slate-500">選擇房間後按解除</div>
+            </div>
+            <div class="space-y-1">
+                <label class="text-[10px] uppercase tracking-widest text-slate-500 font-black">毒氣樓層狀態</label>
+                <div id="poisonFloorChips" class="flex flex-wrap gap-2"></div>
+                <label class="text-[10px] uppercase tracking-widest text-slate-500 font-black">已解除的房間</label>
+                <div id="clearedRoomChips" class="flex flex-wrap gap-2"></div>
             </div>
             <div class="grid grid-cols-2 gap-2">
                 <button onclick="processTurn()" class="bg-emerald-600 py-3 rounded-xl font-black text-white text-sm uppercase">回合結算</button>
@@ -155,7 +166,8 @@
         let selectedUid = null;
         let isAimingMode = false;
         let isMoveMode = false;
-        let clearedRoomId = '';
+        let lockedPoisonFloors = new Set();
+        let clearedRooms = new Set();
         const STORAGE_KEY = 'cube_escape_v8_refined';
         const mapConfig = [{"id":"201","name":"基因庫","x":27.65,"y":8.31,"w":18.41,"h":10.51},{"id":"202","name":"停機坪","x":67.44,"y":9.76,"w":23.60,"h":8.56},{"id":"101","name":"水塔","x":16.44,"y":18.17,"w":6.03,"h":9.91},{"id":"102","name":"激光室","x":27.87,"y":18.72,"w":18.20,"h":8.86},{"id":"103","name":"*","x":68.92,"y":18.72,"w":6.88,"h":8.71},{"id":"104","name":"#","x":76.54,"y":18.57,"w":14.39,"h":9.01},{"id":"B101","name":"控制室","x":9.24,"y":28.18,"w":6.88,"h":9.16},{"id":"B102","name":"#","x":16.54,"y":28.48,"w":5.61,"h":9.01},{"id":"B103","name":"*","x":22.89,"y":28.33,"w":4.44,"h":9.16},{"id":"B104","name":"#","x":27.87,"y":28.48,"w":18.10,"h":9.01},{"id":"B105","name":"回收站","x":46.70,"y":28.63,"w":10.58,"h":8.71},{"id":"B106","name":"#","x":72.52,"y":28.63,"w":7.20,"h":9.01},{"id":"B107","name":"武器庫","x":80.14,"y":28.43,"w":10.58,"h":9.01},{"id":"B201","name":"#","x":9.14,"y":38.34,"w":10.58,"h":9.01},{"id":"B202","name":"手術室","x":20.35,"y":38.49,"w":7.09,"h":8.56},{"id":"B203","name":"#","x":27.87,"y":38.24,"w":10.69,"h":8.86},{"id":"B204","name":"餐廳","x":38.87,"y":38.24,"w":7.20,"h":9.16},{"id":"B205","name":"#","x":46.70,"y":38.24,"w":6.67,"h":9.16},{"id":"B206","name":"金庫","x":68.92,"y":38.19,"w":21.80,"h":9.31},{"id":"B301","name":"藥房","x":9.14,"y":48.10,"w":6.77,"h":8.71},{"id":"B302","name":"#","x":16.65,"y":47.95,"w":6.88,"h":9.16},{"id":"B303","name":"*","x":24.06,"y":48.10,"w":6.88,"h":9.01},{"id":"B304","name":"操作室","x":31.46,"y":48.10,"w":7.20,"h":8.86},{"id":"B305","name":"#","x":39.08,"y":47.95,"w":14.39,"h":9.01},{"id":"B306","name":"#","x":68.92,"y":47.95,"w":4.44,"h":9.01},{"id":"B307","name":"*","x":73.90,"y":47.80,"w":9.63,"h":9.61},{"id":"B308","name":"#","x":83.84,"y":47.95,"w":7.20,"h":9.16},{"id":"B401","name":"#","x":31.57,"y":57.86,"w":14.39,"h":9.01},{"id":"B402","name":"*","x":46.60,"y":57.71,"w":6.67,"h":9.31},{"id":"B403","name":"傳送室","x":68.92,"y":57.71,"w":6.88,"h":9.16},{"id":"B404","name":"#","x":76.44,"y":57.86,"w":6.88,"h":8.71},{"id":"B405","name":"#","x":83.74,"y":57.86,"w":6.98,"h":9.01},{"id":"B501","name":"大倉庫","x":9.14,"y":57.86,"w":21.69,"h":18.62},{"id":"B502","name":"#","x":31.57,"y":67.62,"w":10.58,"h":8.86},{"id":"B503","name":"垃圾場","x":42.79,"y":67.77,"w":14.39,"h":9.01},{"id":"B504","name":"#","x":68.92,"y":67.77,"w":10.58,"h":9.01},{"id":"B505","name":"糧倉","x":80.14,"y":67.62,"w":10.79,"h":9.16},{"id":"B601","name":"酒窖","x":27.87,"y":77.23,"w":17.99,"h":9.31},{"id":"B602","name":"#","x":46.49,"y":77.38,"w":10.69,"h":9.01},{"id":"B603","name":"*","x":57.71,"y":77.38,"w":10.58,"h":9.01},{"id":"B604","name":"#","x":68.92,"y":77.38,"w":10.69,"h":9.01},{"id":"B701","name":"停屍間","x":46.81,"y":87.29,"w":10.26,"h":9.01}];
 
@@ -168,7 +180,9 @@
                         players = parsed;
                     } else {
                         players = parsed.players || [];
-                        clearedRoomId = parsed.clearedRoomId || '';
+                        const legacyClear = parsed.clearedRoomId || '';
+                        clearedRooms = new Set(parsed.clearedRooms || (legacyClear ? [legacyClear] : []));
+                        lockedPoisonFloors = new Set(parsed.lockedPoisonFloors || parsed.poisonFloors || []);
                     }
                 } catch (e) {
                     players = [];
@@ -177,7 +191,7 @@
             if (players.length > 0) selectedUid = players[0].uid;
             renderAll();
         };
-        function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify({ players, clearedRoomId })); }
+        function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify({ players, clearedRooms: Array.from(clearedRooms), lockedPoisonFloors: Array.from(lockedPoisonFloors) })); }
 
         function toggleDrawer(which, targetState) {
             const el = which === 'top' ? document.getElementById('topDrawer') : which === 'left' ? document.getElementById('leftDrawer') : document.getElementById('bottomDrawer');
@@ -198,12 +212,41 @@
             return `${upper[0]}F`;
         }
 
+        function getWinningPoisonFloors() {
+            const counts = {};
+            players.forEach(p => {
+                const floor = (p.poisonFloor || '').toUpperCase();
+                if (!floor) return;
+                const weight = p.tenVote ? 10 : 1;
+                counts[floor] = (counts[floor] || 0) + weight;
+            });
+            const entries = Object.entries(counts);
+            if (entries.length === 0) return new Set();
+            const maxVote = Math.max(...entries.map(([, c]) => c));
+            if (maxVote <= 0) return new Set();
+            return new Set(entries.filter(([, c]) => c === maxVote).map(([f]) => f));
+        }
+
+        function getActivePoisonFloors() {
+            const winners = getWinningPoisonFloors();
+            return new Set([...lockedPoisonFloors, ...winners]);
+        }
+
+        function isRoomPoisoned(roomId, activeFloors) {
+            if (!roomId) return false;
+            const upper = roomId.toUpperCase();
+            if (clearedRooms.has(upper)) return false;
+            if (upper === '202') return false;
+            if (upper === 'B501') return activeFloors.has('B4') && activeFloors.has('B5');
+            const floor = getRoomFloor(upper);
+            return activeFloors.has(floor);
+        }
+
         function getCalculatedState() {
             const round = parseInt(document.getElementById('gameRound').value);
             const gasDmgList = [0, 1, 2, 2, 3, 3, 4];
             const gasDmg = gasDmgList[round];
-
-            const poisonFloors = new Set(players.map(p => (p.poisonFloor || '').toUpperCase()).filter(Boolean));
+            const activePoisonFloors = getActivePoisonFloors();
 
             return players.map(p => {
                 let dmg = 0; let weightUsed = 0;
@@ -214,19 +257,7 @@
 
                 let gasStatus = false;
                 if (p.currentRoomId) {
-                    const roomId = p.currentRoomId.toUpperCase();
-                    const floor = getRoomFloor(roomId);
-                    if (roomId === '202') {
-                        gasStatus = false;
-                    } else if (roomId === 'B501') {
-                        gasStatus = poisonFloors.has('B4') && poisonFloors.has('B5');
-                    } else {
-                        gasStatus = poisonFloors.has(floor);
-                    }
-
-                    if (clearedRoomId && clearedRoomId.toUpperCase() === roomId) {
-                        gasStatus = false;
-                    }
+                    gasStatus = isRoomPoisoned(p.currentRoomId, activePoisonFloors);
                 }
 
                 if (!p.items.mask && gasStatus && !p.isShadow) dmg += gasDmg;
@@ -307,10 +338,29 @@
             renderAll(); save();
         }
 
-        function processTurn() { const data = getCalculatedState(); let html = ''; data.forEach(p => { if (p.expectedDmg > 0) html += `<div><b>${p.name}</b> 受傷 ${p.expectedDmg} (HP: ${p.hp} -> ${p.newHp})</div>`; }); document.getElementById('resultContent').innerHTML = html || '本回合無人受傷'; document.getElementById('resultModal').classList.remove('hidden'); }
-        function confirmSettle() { const data = getCalculatedState(); players = data.map(p => ({ ...p, hp: p.newHp, rocketTarget: '', recyclerUsed: false, items: { ...p.items, adrenaline: false }})); document.getElementById('resultModal').classList.add('hidden'); renderAll(); save(); }
+        function processTurn() {
+            const data = getCalculatedState();
+            const winners = getWinningPoisonFloors();
+            const newFloors = Array.from(winners).filter(f => !lockedPoisonFloors.has(f));
+            let html = '';
+            if (winners.size > 0) {
+                html += `<div class="text-emerald-300 font-black">毒氣樓層：${Array.from(winners).join(', ')}${newFloors.length ? '（本回合新增）' : ''}</div>`;
+            }
+            data.forEach(p => { if (p.expectedDmg > 0) html += `<div><b>${p.name}</b> 受傷 ${p.expectedDmg} (HP: ${p.hp} -> ${p.newHp})</div>`; });
+            document.getElementById('resultContent').innerHTML = html || '本回合無人受傷';
+            document.getElementById('resultModal').classList.remove('hidden');
+        }
+        function confirmSettle() {
+            const data = getCalculatedState();
+            const winners = getWinningPoisonFloors();
+            lockedPoisonFloors = new Set([...lockedPoisonFloors, ...winners]);
+            players = data.map(p => ({ ...p, hp: p.newHp, rocketTarget: '', recyclerUsed: false, items: { ...p.items, adrenaline: false }}));
+            document.getElementById('resultModal').classList.add('hidden');
+            renderAll();
+            save();
+        }
 
-        function renderAll() { renderSummary(); renderZones(); renderActivePlayer(); renderSelectOptions(); }
+        function renderAll() { renderSummary(); renderZones(); renderActivePlayer(); renderSelectOptions(); renderPoisonState(); }
 
         function renderSelectOptions() {
             const select = document.getElementById('activePlayerSelect');
@@ -331,15 +381,57 @@
                 const opt = document.createElement('option');
                 opt.value = r.id;
                 opt.textContent = `${r.id} ${r.name}`;
-                if (clearedRoomId ? r.id === clearedRoomId : r.id === existing) opt.selected = true;
+                if (clearedRooms.has(r.id) || r.id === existing) opt.selected = true;
                 clearSelect.appendChild(opt);
             });
         }
 
         function updateClearedRoom(val) {
-            clearedRoomId = val || '';
+            const target = val || '';
+            const indicator = document.getElementById('clearRoomHelper');
+            if (indicator) indicator.textContent = target ? `準備解除：${target}` : '選擇房間後按解除';
+        }
+
+        function applyClearedRoom() {
+            const sel = document.getElementById('clearRoomSelect');
+            if (!sel.value) return;
+            clearedRooms.add(sel.value.toUpperCase());
             renderAll();
             save();
+        }
+
+        function renderPoisonState() {
+            const chipBox = document.getElementById('poisonFloorChips');
+            const clearedBox = document.getElementById('clearedRoomChips');
+            if (!chipBox || !clearedBox) return;
+            chipBox.innerHTML = '';
+            clearedBox.innerHTML = '';
+            const active = getActivePoisonFloors();
+            const winners = getWinningPoisonFloors();
+
+            const makeChip = (label, color) => {
+                const span = document.createElement('span');
+                span.className = `px-2 py-1 rounded-lg text-[10px] font-black ${color}`;
+                span.textContent = label;
+                return span;
+            };
+
+            if (active.size === 0) {
+                chipBox.appendChild(makeChip('目前無毒氣樓層', 'bg-slate-800 text-slate-400 border border-slate-700'));
+            } else {
+                Array.from(active).sort().forEach(floor => {
+                    const isNew = winners.has(floor) && !lockedPoisonFloors.has(floor);
+                    chipBox.appendChild(makeChip(`${floor}${isNew ? ' (新)' : ''}`, 'bg-emerald-500/20 text-emerald-200 border border-emerald-500/40'));
+                });
+            }
+
+            if (clearedRooms.size === 0) {
+                clearedBox.appendChild(makeChip('尚未解除任何房間', 'bg-slate-800 text-slate-400 border border-slate-700'));
+            } else {
+                Array.from(clearedRooms).sort().forEach(room => {
+                    clearedBox.appendChild(makeChip(room, 'bg-amber-500/20 text-amber-200 border border-amber-500/40'));
+                });
+            }
         }
 
         function renderActivePlayer() {
@@ -450,6 +542,7 @@
             const overlay = document.getElementById('interactionOverlay'); overlay.innerHTML = '';
             const occupants = {};
             const bombedRooms = new Set();
+            const activePoisonFloors = getActivePoisonFloors();
             players.forEach(p => {
                 if(p.currentRoomId) (occupants[p.currentRoomId] = occupants[p.currentRoomId] || []).push(p.name);
                 if(p.items?.rocketLauncher && p.rocketTarget) bombedRooms.add(p.rocketTarget.toUpperCase());
@@ -460,7 +553,8 @@
                 const p = selectedUid ? players.find(x => x.uid === selectedUid) : null;
                 const isCurrentLoc = p && p.currentRoomId === conf.id;
                 const isBombed = bombedRooms.has(conf.id.toUpperCase());
-                zone.className = `room-zone ${isCurrentLoc ? 'room-target' : ''} ${isBombed ? 'room-bombed' : ''}`;
+                const poisoned = isRoomPoisoned(conf.id, activePoisonFloors);
+                zone.className = `room-zone ${isCurrentLoc ? 'room-target' : ''} ${isBombed ? 'room-bombed' : ''} ${poisoned ? 'room-poison' : ''}`;
                 zone.style.cssText = `left:${conf.x}%; top:${conf.y}%; width:${conf.w}%; height:${conf.h}%;`;
                 if (occupants[conf.id]) {
                     const wrapper = document.createElement('div');
@@ -479,7 +573,7 @@
 
         function updatePlayer(uid, field, val) { const p = players.find(x => x.uid === uid); if(p) { p[field] = val; renderAll(); save(); } }
         function removePlayer(uid) { if(confirm('確定移除玩家？')) { players = players.filter(x => x.uid !== uid); if (selectedUid === uid) selectedUid = players[0]?.uid || null; renderAll(); save(); } }
-        function resetData() { if(confirm('抹除所有緩存數據？')) { players = []; clearedRoomId = ''; localStorage.removeItem(STORAGE_KEY); selectedUid = null; renderAll(); } }
+        function resetData() { if(confirm('抹除所有緩存數據？')) { players = []; clearedRooms = new Set(); lockedPoisonFloors = new Set(); localStorage.removeItem(STORAGE_KEY); selectedUid = null; renderAll(); } }
     </script>
 </body>
 </html>
