@@ -172,10 +172,18 @@
             el.dataset.state = desired;
         }
 
+        function getRoomFloor(roomId) {
+            if (!roomId) return '';
+            if (roomId.startsWith('B')) return roomId.slice(0, 2);
+            return roomId[0];
+        }
+
         function getCalculatedState() {
             const round = parseInt(document.getElementById('gameRound').value);
             const gasDmgList = [0, 1, 2, 2, 3, 3, 4];
             const gasDmg = gasDmgList[round];
+
+            const poisonFloors = new Set(players.map(p => p.poisonFloor).filter(Boolean));
 
             return players.map(p => {
                 let dmg = 0; let weightUsed = 0;
@@ -184,21 +192,22 @@
                 weightUsed += (p.items.mask?1:0) + (p.items.rope?1:0) + (p.items.adrenaline?1:0) + (p.items.recycler?1:0) + (p.items.rocketLauncher?1:0);
                 weightUsed += (p.weapons.shotgun || 0) + (p.weapons.pistol || 0) + (p.weapons.knife || 0);
 
-                if (!p.items.mask && p.gasStatus && !p.isShadow) dmg += gasDmg;
+                const gasStatus = p.currentRoomId ? poisonFloors.has(getRoomFloor(p.currentRoomId)) : false;
+                if (!p.items.mask && gasStatus && !p.isShadow) dmg += gasDmg;
                 players.forEach(other => { if (other.items.rocketLauncher && other.rocketTarget && p.currentRoomId?.toUpperCase() === other.rocketTarget.toUpperCase()) dmg += 4; });
 
                 const finalSpdText = p.items.adrenaline ? `${p.spd} (10)` : p.spd;
                 const totalStr = p.str + weaponStrBonus;
                 const hasGun = (p.weapons.shotgun > 0) || (p.weapons.pistol > 0);
 
-                return { ...p, totalStr, expectedDmg: dmg, newHp: Math.max(0, p.hp - dmg), finalSpdText, weightUsed, overweight: !p.items.dimensionPocket && weightUsed > p.lod, hasGun };
+                return { ...p, gasStatus, totalStr, expectedDmg: dmg, newHp: Math.max(0, p.hp - dmg), finalSpdText, weightUsed, overweight: !p.items.dimensionPocket && weightUsed > p.lod, hasGun };
             });
         }
 
         function addPlayer() {
             const name = document.getElementById('playerNameInput').value.trim();
             if (!name) return;
-            players.push({ uid: Date.now(), name, hp: 10, currentRoomId: null, gasStatus: false, isShadow: false, str: 4, spd: 3, lod: 3, rocketTarget: '', recyclerUsed: false, weapons: { shotgun: 0, pistol: 0, knife: 0 }, items: { mask: false, rope: false, adrenaline: false, recycler: false, rocketLauncher: false, dimensionPocket: false } });
+            players.push({ uid: Date.now(), name, hp: 10, currentRoomId: null, gasStatus: false, poisonFloor: '', tenVote: false, isShadow: false, str: 4, spd: 3, lod: 3, rocketTarget: '', recyclerUsed: false, weapons: { shotgun: 0, pistol: 0, knife: 0 }, items: { mask: false, rope: false, adrenaline: false, recycler: false, rocketLauncher: false, dimensionPocket: false } });
             document.getElementById('playerNameInput').value = '';
             selectedUid = players[players.length - 1].uid;
             renderAll();
@@ -263,7 +272,7 @@
         }
 
         function processTurn() { const data = getCalculatedState(); let html = ''; data.forEach(p => { if (p.expectedDmg > 0) html += `<div><b>${p.name}</b> 受傷 ${p.expectedDmg} (HP: ${p.hp} -> ${p.newHp})</div>`; }); document.getElementById('resultContent').innerHTML = html || '本回合無人受傷'; document.getElementById('resultModal').classList.remove('hidden'); }
-        function confirmSettle() { const data = getCalculatedState(); players = data.map(p => ({ ...p, hp: p.newHp, gasStatus: false, rocketTarget: '', recyclerUsed: false, items: { ...p.items, adrenaline: false }})); document.getElementById('resultModal').classList.add('hidden'); renderAll(); save(); }
+        function confirmSettle() { const data = getCalculatedState(); players = data.map(p => ({ ...p, hp: p.newHp, rocketTarget: '', recyclerUsed: false, items: { ...p.items, adrenaline: false }})); document.getElementById('resultModal').classList.add('hidden'); renderAll(); save(); }
 
         function renderAll() { renderSummary(); renderZones(); renderActivePlayer(); renderSelectOptions(); }
 
@@ -326,15 +335,25 @@
                 }
             }).join('');
 
+            const poisonSelect = `
+                <select class="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-xs font-black"
+                    onchange="updatePlayer(${p.uid}, 'poisonFloor', this.value)">
+                    ${['', '2F', 'B7'].map(v => `<option value="${v}" ${(p.poisonFloor === v || (!p.poisonFloor && v === '')) ? 'selected' : ''}>${v || '未選擇'}</option>`).join('')}
+                </select>`;
+
             container.innerHTML = `
                 <div class="flex flex-wrap justify-between items-center gap-3 mb-3">
-                    <div>
+                    <div class="flex items-center gap-3 flex-wrap">
                         <div class="flex items-center gap-3">
                             <span class="text-2xl font-black text-white">${p.name}</span>
                             <span class="room-badge">${p.currentRoomId || '??'}</span>
                             <button class="px-3 py-2 text-xs font-black bg-blue-600 rounded-xl" onclick="enableMoveMode()">移動</button>
                         </div>
-                        <div class="mt-1 text-xs text-slate-500">負重: <span class="${p.overweight ? 'text-red-500 font-black' : ''}">${p.weightUsed}/${p.items.dimensionPocket ? '∞' : p.lod}</span></div>
+                        <div class="flex items-center gap-3 text-xs font-black text-slate-300">
+                            <label class="flex items-center gap-1">投毒樓層 ${poisonSelect}</label>
+                            <label class="flex items-center gap-1"><input type="checkbox" ${p.tenVote ? 'checked' : ''} onchange="updatePlayer(${p.uid}, 'tenVote', this.checked)">10票</label>
+                        </div>
+                        <div class="w-full text-xs text-slate-500">負重: <span class="${p.overweight ? 'text-red-500 font-black' : ''}">${p.weightUsed}/${p.items.dimensionPocket ? '∞' : p.lod}</span></div>
                     </div>
                     <div class="flex items-center gap-2">
                         <span class="text-2xl font-black ${p.hp <= 3 ? 'text-red-500' : 'text-green-500'}">${p.hp}</span>
@@ -357,11 +376,8 @@
 
                 <div class="grid grid-cols-3 gap-2 mb-4">${gridHtml}</div>
 
-                <div class="flex justify-between items-center text-[10px] font-bold text-slate-600">
-                    <label class="flex items-center gap-2"><input type="checkbox" ${p.gasStatus ? 'checked' : ''} onchange="updatePlayer(${p.uid}, 'gasStatus', this.checked)"> 毒氣區</label>
-                    <div class="flex gap-3">
-                        <button onclick="removePlayer(${p.uid})" class="hover:text-red-500">移除玩家</button>
-                    </div>
+                <div class="flex justify-end items-center text-[10px] font-bold text-slate-600">
+                    <button onclick="removePlayer(${p.uid})" class="hover:text-red-500">移除玩家</button>
                 </div>`;
         }
 
