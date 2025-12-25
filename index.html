@@ -69,7 +69,7 @@
 
         /* 上方抽屜佈局：固定摘要列、表格滾動 */
         #topDrawerContent { display: flex; flex-direction: column; gap: 12px; }
-        #summaryTableShell { display: flex; flex-direction: column; max-height: 65vh; }
+        #summaryTableShell { display: flex; flex-direction: column; max-height: min(45vh, 420px); }
         #summaryScrollArea { flex: 1; overflow-y: auto; }
         .summary-footer-row { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; overflow-x: auto; white-space: nowrap; }
         #poisonSummary { display: inline-flex; align-items: center; gap: 6px; flex-wrap: nowrap; }
