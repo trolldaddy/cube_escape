@@ -90,6 +90,12 @@
                     <option value="">--</option>
                 </select>
             </div>
+            <div class="space-y-2">
+                <label class="text-[10px] uppercase tracking-widest text-slate-500 font-black">控制室解除毒氣房間</label>
+                <select id="clearRoomSelect" onchange="updateClearedRoom(this.value)" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 font-bold text-sm">
+                    <option value="">-- 無 --</option>
+                </select>
+            </div>
             <div class="grid grid-cols-2 gap-2">
                 <button onclick="processTurn()" class="bg-emerald-600 py-3 rounded-xl font-black text-white text-sm uppercase">回合結算</button>
                 <button onclick="resetData()" class="bg-slate-800 py-3 rounded-xl text-slate-400 font-bold text-xs">清空數據</button>
@@ -149,16 +155,29 @@
         let selectedUid = null;
         let isAimingMode = false;
         let isMoveMode = false;
+        let clearedRoomId = '';
         const STORAGE_KEY = 'cube_escape_v8_refined';
         const mapConfig = [{"id":"201","name":"基因庫","x":27.65,"y":8.31,"w":18.41,"h":10.51},{"id":"202","name":"停機坪","x":67.44,"y":9.76,"w":23.60,"h":8.56},{"id":"101","name":"水塔","x":16.44,"y":18.17,"w":6.03,"h":9.91},{"id":"102","name":"激光室","x":27.87,"y":18.72,"w":18.20,"h":8.86},{"id":"103","name":"*","x":68.92,"y":18.72,"w":6.88,"h":8.71},{"id":"104","name":"#","x":76.54,"y":18.57,"w":14.39,"h":9.01},{"id":"B101","name":"控制室","x":9.24,"y":28.18,"w":6.88,"h":9.16},{"id":"B102","name":"#","x":16.54,"y":28.48,"w":5.61,"h":9.01},{"id":"B103","name":"*","x":22.89,"y":28.33,"w":4.44,"h":9.16},{"id":"B104","name":"#","x":27.87,"y":28.48,"w":18.10,"h":9.01},{"id":"B105","name":"回收站","x":46.70,"y":28.63,"w":10.58,"h":8.71},{"id":"B106","name":"#","x":72.52,"y":28.63,"w":7.20,"h":9.01},{"id":"B107","name":"武器庫","x":80.14,"y":28.43,"w":10.58,"h":9.01},{"id":"B201","name":"#","x":9.14,"y":38.34,"w":10.58,"h":9.01},{"id":"B202","name":"手術室","x":20.35,"y":38.49,"w":7.09,"h":8.56},{"id":"B203","name":"#","x":27.87,"y":38.24,"w":10.69,"h":8.86},{"id":"B204","name":"餐廳","x":38.87,"y":38.24,"w":7.20,"h":9.16},{"id":"B205","name":"#","x":46.70,"y":38.24,"w":6.67,"h":9.16},{"id":"B206","name":"金庫","x":68.92,"y":38.19,"w":21.80,"h":9.31},{"id":"B301","name":"藥房","x":9.14,"y":48.10,"w":6.77,"h":8.71},{"id":"B302","name":"#","x":16.65,"y":47.95,"w":6.88,"h":9.16},{"id":"B303","name":"*","x":24.06,"y":48.10,"w":6.88,"h":9.01},{"id":"B304","name":"操作室","x":31.46,"y":48.10,"w":7.20,"h":8.86},{"id":"B305","name":"#","x":39.08,"y":47.95,"w":14.39,"h":9.01},{"id":"B306","name":"#","x":68.92,"y":47.95,"w":4.44,"h":9.01},{"id":"B307","name":"*","x":73.90,"y":47.80,"w":9.63,"h":9.61},{"id":"B308","name":"#","x":83.84,"y":47.95,"w":7.20,"h":9.16},{"id":"B401","name":"#","x":31.57,"y":57.86,"w":14.39,"h":9.01},{"id":"B402","name":"*","x":46.60,"y":57.71,"w":6.67,"h":9.31},{"id":"B403","name":"傳送室","x":68.92,"y":57.71,"w":6.88,"h":9.16},{"id":"B404","name":"#","x":76.44,"y":57.86,"w":6.88,"h":8.71},{"id":"B405","name":"#","x":83.74,"y":57.86,"w":6.98,"h":9.01},{"id":"B501","name":"大倉庫","x":9.14,"y":57.86,"w":21.69,"h":18.62},{"id":"B502","name":"#","x":31.57,"y":67.62,"w":10.58,"h":8.86},{"id":"B503","name":"垃圾場","x":42.79,"y":67.77,"w":14.39,"h":9.01},{"id":"B504","name":"#","x":68.92,"y":67.77,"w":10.58,"h":9.01},{"id":"B505","name":"糧倉","x":80.14,"y":67.62,"w":10.79,"h":9.16},{"id":"B601","name":"酒窖","x":27.87,"y":77.23,"w":17.99,"h":9.31},{"id":"B602","name":"#","x":46.49,"y":77.38,"w":10.69,"h":9.01},{"id":"B603","name":"*","x":57.71,"y":77.38,"w":10.58,"h":9.01},{"id":"B604","name":"#","x":68.92,"y":77.38,"w":10.69,"h":9.01},{"id":"B701","name":"停屍間","x":46.81,"y":87.29,"w":10.26,"h":9.01}];
 
         window.onload = () => {
             const saved = localStorage.getItem(STORAGE_KEY);
-            if (saved) players = JSON.parse(saved);
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    if (Array.isArray(parsed)) {
+                        players = parsed;
+                    } else {
+                        players = parsed.players || [];
+                        clearedRoomId = parsed.clearedRoomId || '';
+                    }
+                } catch (e) {
+                    players = [];
+                }
+            }
             if (players.length > 0) selectedUid = players[0].uid;
             renderAll();
         };
-        function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(players)); }
+        function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify({ players, clearedRoomId })); }
 
         function toggleDrawer(which, targetState) {
             const el = which === 'top' ? document.getElementById('topDrawer') : which === 'left' ? document.getElementById('leftDrawer') : document.getElementById('bottomDrawer');
@@ -174,8 +193,9 @@
 
         function getRoomFloor(roomId) {
             if (!roomId) return '';
-            if (roomId.startsWith('B')) return roomId.slice(0, 2);
-            return roomId[0];
+            const upper = roomId.toUpperCase();
+            if (upper.startsWith('B')) return upper.slice(0, 2);
+            return `${upper[0]}F`;
         }
 
         function getCalculatedState() {
@@ -183,7 +203,7 @@
             const gasDmgList = [0, 1, 2, 2, 3, 3, 4];
             const gasDmg = gasDmgList[round];
 
-            const poisonFloors = new Set(players.map(p => p.poisonFloor).filter(Boolean));
+            const poisonFloors = new Set(players.map(p => (p.poisonFloor || '').toUpperCase()).filter(Boolean));
 
             return players.map(p => {
                 let dmg = 0; let weightUsed = 0;
@@ -192,7 +212,23 @@
                 weightUsed += (p.items.mask?1:0) + (p.items.rope?1:0) + (p.items.adrenaline?1:0) + (p.items.recycler?1:0) + (p.items.rocketLauncher?1:0);
                 weightUsed += (p.weapons.shotgun || 0) + (p.weapons.pistol || 0) + (p.weapons.knife || 0);
 
-                const gasStatus = p.currentRoomId ? poisonFloors.has(getRoomFloor(p.currentRoomId)) : false;
+                let gasStatus = false;
+                if (p.currentRoomId) {
+                    const roomId = p.currentRoomId.toUpperCase();
+                    const floor = getRoomFloor(roomId);
+                    if (roomId === '202') {
+                        gasStatus = false;
+                    } else if (roomId === 'B501') {
+                        gasStatus = poisonFloors.has('B4') && poisonFloors.has('B5');
+                    } else {
+                        gasStatus = poisonFloors.has(floor);
+                    }
+
+                    if (clearedRoomId && clearedRoomId.toUpperCase() === roomId) {
+                        gasStatus = false;
+                    }
+                }
+
                 if (!p.items.mask && gasStatus && !p.isShadow) dmg += gasDmg;
                 players.forEach(other => { if (other.items.rocketLauncher && other.rocketTarget && p.currentRoomId?.toUpperCase() === other.rocketTarget.toUpperCase()) dmg += 4; });
 
@@ -287,6 +323,23 @@
                 if (p.uid == selectedUid || p.uid == current) opt.selected = true;
                 select.appendChild(opt);
             });
+
+            const clearSelect = document.getElementById('clearRoomSelect');
+            const existing = clearSelect.value;
+            clearSelect.innerHTML = '<option value="">-- 無 --</option>';
+            mapConfig.forEach(r => {
+                const opt = document.createElement('option');
+                opt.value = r.id;
+                opt.textContent = `${r.id} ${r.name}`;
+                if (clearedRoomId ? r.id === clearedRoomId : r.id === existing) opt.selected = true;
+                clearSelect.appendChild(opt);
+            });
+        }
+
+        function updateClearedRoom(val) {
+            clearedRoomId = val || '';
+            renderAll();
+            save();
         }
 
         function renderActivePlayer() {
@@ -335,10 +388,11 @@
                 }
             }).join('');
 
+            const poisonFloorOptions = ['', '2F', '1F', 'B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7'];
             const poisonSelect = `
                 <select class="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-xs font-black"
                     onchange="updatePlayer(${p.uid}, 'poisonFloor', this.value)">
-                    ${['', '2F', 'B7'].map(v => `<option value="${v}" ${(p.poisonFloor === v || (!p.poisonFloor && v === '')) ? 'selected' : ''}>${v || '未選擇'}</option>`).join('')}
+                    ${poisonFloorOptions.map(v => `<option value="${v}" ${(p.poisonFloor === v || (!p.poisonFloor && v === '')) ? 'selected' : ''}>${v || '未選擇'}</option>`).join('')}
                 </select>`;
 
             container.innerHTML = `
@@ -425,7 +479,7 @@
 
         function updatePlayer(uid, field, val) { const p = players.find(x => x.uid === uid); if(p) { p[field] = val; renderAll(); save(); } }
         function removePlayer(uid) { if(confirm('確定移除玩家？')) { players = players.filter(x => x.uid !== uid); if (selectedUid === uid) selectedUid = players[0]?.uid || null; renderAll(); save(); } }
-        function resetData() { if(confirm('抹除所有緩存數據？')) { players = []; localStorage.removeItem(STORAGE_KEY); selectedUid = null; renderAll(); } }
+        function resetData() { if(confirm('抹除所有緩存數據？')) { players = []; clearedRoomId = ''; localStorage.removeItem(STORAGE_KEY); selectedUid = null; renderAll(); } }
     </script>
 </body>
 </html>
