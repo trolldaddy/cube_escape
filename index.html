@@ -50,6 +50,7 @@
         .gun-tag { font-size: 9px; background: #ef4444; color: white; padding: 1px 3px; border-radius: 4px; margin-left: 2px; font-weight: 900; }
         .room-badge { background: #0f172a; color: #3b82f6; padding: 2px 8px; border-radius: 6px; font-size: 14px; font-weight: 900; border: 1px solid #1e293b; }
         .occupant-tag { background-color: #ef4444; color: white; font-size: 10px; font-weight: 900; padding: 2px 6px; border-radius: 4px; pointer-events: none; border: 1px solid white; z-index: 50; margin: 1px 0; }
+        .occupant-shadow { background-color: #8b5cf6; border-color: #c084fc; }
 
         /* 置中道具格樣式 (右側六格) */
         .center-item { justify-content: center; text-align: center; flex-direction: column; padding: 8px; }
@@ -259,6 +260,7 @@
         function getWinningPoisonFloors() {
             const counts = {};
             players.forEach(p => {
+                if (p.isShadow || p.hp <= 0) return;
                 const floor = (p.poisonFloor || '').toUpperCase();
                 if (!floor || lockedPoisonFloors.has(floor)) return;
                 const weight = p.tenVote ? 10 : 1;
@@ -271,8 +273,12 @@
             return new Set(entries.filter(([, c]) => c === maxVote).map(([f]) => f));
         }
 
-        function getActivePoisonFloors() {
-            return new Set(lockedPoisonFloors);
+        function getActivePoisonFloors(includePending = false) {
+            const active = new Set(lockedPoisonFloors);
+            if (includePending) {
+                getWinningPoisonFloors().forEach(f => active.add(f));
+            }
+            return active;
         }
 
         function buildRocketHitMap() {
@@ -296,7 +302,7 @@
             const round = parseInt(document.getElementById('gameRound').value);
             const gasDmgList = [0, 1, 2, 2, 3, 3, 4];
             const gasDmg = gasDmgList[round];
-            const activePoisonFloors = getActivePoisonFloors();
+            const activePoisonFloors = getActivePoisonFloors(true);
             const rocketMap = buildRocketHitMap();
 
             // 預先計算戰鬥需要的力量與槍枝狀態
@@ -318,7 +324,7 @@
 
             // 手術：正巧兩位存活玩家在手術室 -> 各 +4（上限 10）
             const surgeryBonus = {};
-            const surgeryGroup = (roomMap['B202'] || []).filter(p => p.hp > 0);
+            const surgeryGroup = (roomMap['B202'] || []).filter(p => p.hp > 0 && !p.isShadow);
             if (surgeryGroup.length === 2) {
                 surgeryGroup.forEach(p => surgeryBonus[p.uid] = 4);
             }
@@ -326,9 +332,13 @@
             // 戰鬥 / 亂鬥 / 暗影邏輯
             const battleDelta = {};
             const battleLabel = {};
+            const pushLabel = (uid, label) => {
+                const parts = new Set((battleLabel[uid] || '').split(' ').filter(Boolean));
+                parts.add(label);
+                battleLabel[uid] = Array.from(parts).join(' ');
+            };
             const resolveCombat = (group, room) => {
                 if (group.length < 2) return;
-                const labels = group.some(p => p.isShadow && group.some(o => o.uid !== p.uid)) ? '暗影' : (group.length >= 3 ? '亂鬥' : '戰鬥');
                 const guns = group.filter(p => p.hasGun);
                 const roomDmg = {};
 
@@ -346,16 +356,24 @@
 
                 Object.entries(roomDmg).forEach(([uid, delta]) => {
                     battleDelta[uid] = (battleDelta[uid] || 0) + delta;
-                    battleLabel[uid] = labels;
+                    pushLabel(uid, group.length >= 3 ? '亂鬥' : '戰鬥');
                 });
             };
 
             Object.entries(roomMap).forEach(([room, group]) => {
-                const livingGroup = group.filter(p => p.hp > 0);
+                const livingGroup = group.filter(p => p.hp > 0 && !p.isShadow);
+                const shadows = group.filter(p => p.isShadow);
                 if (room === 'B202') {
                     if (livingGroup.length >= 3) resolveCombat(livingGroup, room);
                 } else {
                     resolveCombat(livingGroup, room);
+                }
+
+                if (shadows.length > 0 && livingGroup.length > 0) {
+                    livingGroup.forEach(p => {
+                        battleDelta[p.uid] = (battleDelta[p.uid] || 0) - 1;
+                        pushLabel(p.uid, '暗影');
+                    });
                 }
             });
 
@@ -414,7 +432,7 @@
             const round = parseInt(document.getElementById('gameRound').value);
             const gasDmgList = [0, 1, 2, 2, 3, 3, 4];
             const gasDmg = gasDmgList[round];
-            const activePoisonFloors = getActivePoisonFloors();
+            const activePoisonFloors = getActivePoisonFloors(true);
 
             return players.map(p => {
                 let dmg = 0; let weightUsed = 0;
@@ -459,12 +477,14 @@
             renderAll();
         }
 
-        function toggleItem(uid, key) {
+        function toggleItem(evt, uid, key) {
+            if (evt) evt.stopPropagation();
             const p = players.find(x => x.uid === uid);
             if (p) { p.items[key] = !p.items[key]; if (key === 'rocketLauncher' && !p.items[key]) { p.rocketTarget = ''; } renderAll(); save(); }
         }
 
-        function toggleRecyclerUse(uid) {
+        function toggleRecyclerUse(evt, uid) {
+            if (evt) evt.stopPropagation();
             const p = players.find(x => x.uid === uid);
             if (p) { p.recyclerUsed = !p.recyclerUsed; renderAll(); save(); }
         }
@@ -484,14 +504,16 @@
         }
         function selectPlayer(uid) { selectedUid = uid; isAimingMode = false; isMoveMode = false; renderAll(); }
 
-        function enableMoveMode() {
+        function enableMoveMode(evt) {
+            if (evt) evt.stopPropagation();
             isMoveMode = true;
             isAimingMode = false;
             document.getElementById('mapStatusTip').classList.remove('hidden');
             document.getElementById('mapStatusTip').innerText = '⚠️ 點擊地圖選擇移動位置 ⚠️';
         }
 
-        function enableAimMode() {
+        function enableAimMode(evt) {
+            if (evt) evt.stopPropagation();
             isAimingMode = true;
             isMoveMode = false;
             document.getElementById('mapStatusTip').classList.remove('hidden');
@@ -577,7 +599,21 @@
             settlementHistory = settlementHistory.filter(entry => entry.round !== parseInt(document.getElementById('gameRound').value));
             settlementHistory.push({ round: parseInt(document.getElementById('gameRound').value), rows: rows.map(r => ({...r})) });
 
-            players = rows.map(p => ({ ...p, hp: p.newHp, rocketTarget: '', recyclerUsed: false, items: { ...p.items, adrenaline: false }}));
+            players = rows.map(p => {
+                const becameShadow = p.newHp <= 0;
+                const nextShadow = p.isShadow || becameShadow;
+                return {
+                    ...p,
+                    hp: p.newHp,
+                    isShadow: nextShadow,
+                    currentRoomId: nextShadow ? 'B701' : p.currentRoomId,
+                    poisonFloor: nextShadow ? '' : p.poisonFloor,
+                    tenVote: nextShadow ? false : p.tenVote,
+                    rocketTarget: '',
+                    recyclerUsed: false,
+                    items: { ...p.items, adrenaline: false }
+                };
+            });
             document.getElementById('resultModal').classList.add('hidden');
 
             const roundSel = document.getElementById('gameRound');
@@ -590,7 +626,21 @@
             save();
         }
 
-        function renderAll() { renderSummary(); renderZones(); renderActivePlayer(); renderSelectOptions(); renderRoundViewer(); renderPoisonState(); }
+        function renderAll() { syncShadowStates(); renderSummary(); renderZones(); renderActivePlayer(); renderSelectOptions(); renderRoundViewer(); renderPoisonState(); }
+
+        function syncShadowStates() {
+            let mutated = false;
+            players.forEach(p => {
+                if (p.hp <= 0 && !p.isShadow) {
+                    p.isShadow = true;
+                    p.currentRoomId = 'B701';
+                    p.poisonFloor = '';
+                    p.tenVote = false;
+                    mutated = true;
+                }
+            });
+            if (mutated) save();
+        }
 
         function renderRoundViewer() {
             const select = document.getElementById('viewRoundSelect');
@@ -758,11 +808,11 @@
                     const on = p.items[item.k];
                     let actionHtml = '';
                     if (on && item.action === 'aim') {
-                        actionHtml = `<button onclick="enableAimMode()" class="action-btn">${p.rocketTarget || '瞄準'}</button>`;
+                        actionHtml = `<button onclick="enableAimMode(event)" class="action-btn">${p.rocketTarget || '瞄準'}</button>`;
                     } else if (on && item.action === 'use') {
-                        actionHtml = `<button onclick="toggleRecyclerUse(${p.uid})" class="action-btn ${p.recyclerUsed ? 'action-btn-used' : ''}">${p.recyclerUsed ? '已使用' : '使用'}</button>`;
+                        actionHtml = `<button onclick="toggleRecyclerUse(event, ${p.uid})" class="action-btn ${p.recyclerUsed ? 'action-btn-used' : ''}">${p.recyclerUsed ? '已使用' : '使用'}</button>`;
                     }
-                    return `<div onclick="toggleItem(${p.uid}, '${item.k}')" class="cell-item center-item ${on ? 'cell-on' : 'cell-off'}">
+                    return `<div onclick="toggleItem(event, ${p.uid}, '${item.k}')" class="cell-item center-item ${on ? 'cell-on' : 'cell-off'}">
                         <span class="cell-label">${item.e} ${item.l}</span>
                         <div class="text-[9px] opacity-60">${on ? '已持有' : '未持有'}</div>
                         ${actionHtml}
@@ -772,7 +822,7 @@
 
             const poisonFloorOptions = ['', '2F', '1F', 'B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7'];
             const availableFloors = poisonFloorOptions.filter(f => !lockedPoisonFloors.has(f) || f === p.poisonFloor);
-            const poisonSelect = `
+            const poisonSelect = p.isShadow ? `<span class="text-slate-500">暗影免投票</span>` : `
                 <select class="bg-slate-900 border border-slate-700 rounded-lg px-2 py-1 text-xs font-black"
                     onchange="updatePlayer(${p.uid}, 'poisonFloor', this.value)">
                     ${availableFloors.map(v => `<option value="${v}" ${(p.poisonFloor === v || (!p.poisonFloor && v === '')) ? 'selected' : ''} ${lockedPoisonFloors.has(v) && v === p.poisonFloor ? 'disabled' : ''}>${v ? (lockedPoisonFloors.has(v) ? v + '（已毒）' : v) : '未選擇'}</option>`).join('')}
@@ -858,7 +908,7 @@
             const bombedRooms = new Set();
             const activePoisonFloors = getActivePoisonFloors();
             players.forEach(p => {
-                if(p.currentRoomId) (occupants[p.currentRoomId] = occupants[p.currentRoomId] || []).push(p.name);
+                if(p.currentRoomId) (occupants[p.currentRoomId] = occupants[p.currentRoomId] || []).push({ name: p.name, isShadow: p.isShadow });
                 if(p.items?.rocketLauncher && p.rocketTarget) bombedRooms.add(p.rocketTarget.toUpperCase());
             });
             document.getElementById('mapStatusTip').classList.toggle('hidden', !(isAimingMode || isMoveMode));
@@ -873,10 +923,10 @@
                 if (occupants[conf.id]) {
                     const wrapper = document.createElement('div');
                     wrapper.className = 'flex flex-col items-center pointer-events-none';
-                    occupants[conf.id].forEach(name => {
+                    occupants[conf.id].forEach(person => {
                         const tag = document.createElement('div');
-                        tag.className = 'occupant-tag';
-                        tag.innerText = name;
+                        tag.className = `occupant-tag ${person.isShadow ? 'occupant-shadow' : ''}`;
+                        tag.innerText = person.name;
                         wrapper.appendChild(tag);
                     });
                     zone.appendChild(wrapper);
