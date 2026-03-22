@@ -59,8 +59,8 @@
         .player-card-active { ring: 2px solid #3b82f6; background-color: #0f172a !important; border-color: #3b82f6 !important; }
 
         /* 抽屜樣式 */
-        .drawer-handle { position: absolute; background: #1e293b; color: #cbd5e1; border: 1px solid #334155; border-radius: 9999px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; z-index: 50; }
-        .drawer-panel { backdrop-filter: blur(6px); z-index: 40; }
+        .drawer-handle { position: absolute; background: #1e293b; color: #cbd5e1; border: 1px solid #334155; border-radius: 9999px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; z-index: 80; cursor: pointer; }
+        .drawer-panel { backdrop-filter: blur(6px); z-index: 60; }
         #leftHandle { writing-mode: vertical-rl; text-orientation: mixed; letter-spacing: 2px; }
 
         /* 地圖微調位置，避免底部抽屜遮擋 */
@@ -84,7 +84,7 @@
     <div id="leftDrawer" data-state="closed" class="drawer-panel fixed left-4 top-1/2 w-80 max-w-[90vw] bg-slate-900/95 border border-slate-800 rounded-2xl shadow-2xl transition-all duration-300" style="transform: translate(-92%, -50%);">
         <button id="leftHandle" class="drawer-handle -right-10 top-1/2 -translate-y-1/2 px-2 py-3" onclick="toggleDrawer('left')">控制面板</button>
         <div class="p-4 space-y-4">
-            <div class="flex items-center justify-between">
+            <div class="flex items-center justify-between cursor-pointer" onclick="toggleDrawer('left')">
                 <h2 class="text-lg font-black text-white">控制面板</h2>
                 <select id="gameRound" onchange="renderAll()" class="bg-slate-900 text-amber-500 font-black text-xs px-3 py-2 rounded-xl border border-slate-800 outline-none">
                     <option value="1">回合 1 (毒-1)</option><option value="2">回合 2 (毒-2)</option>
@@ -126,7 +126,7 @@
             <div class="flex justify-end">
                 <div id="mapStatusTip" class="bg-red-600/20 text-red-500 text-[10px] font-black px-3 py-1 rounded-xl text-center uppercase tracking-widest hidden border border-red-600/30">⚠️ 請在地圖上點選房間 ⚠️</div>
             </div>
-            <div class="flex justify-between items-center text-xs text-slate-400 mb-2">
+            <div class="flex justify-between items-center text-xs text-slate-400 mb-2 cursor-pointer" onclick="toggleDrawer('top')">
                 <div class="flex items-center gap-2">
                     <span class="font-black text-[10px] tracking-widest uppercase">檢視回合</span>
                     <select id="viewRoundSelect" onchange="changeViewRound(this.value)" class="bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-xs font-bold">
@@ -158,13 +158,13 @@
     <!-- 底部抽屜：當前玩家詳細 -->
     <div id="bottomDrawer" data-state="closed" class="drawer-panel fixed left-1/2 -translate-x-1/2 bottom-4 w-[96vw] max-w-[1200px] bg-slate-900/95 border border-slate-800 rounded-3xl shadow-2xl transition-all duration-300" style="transform: translate(-50%, 70%);">
         <button id="bottomHandle" class="drawer-handle left-1/2 -translate-x-1/2 -top-10 px-4 py-2" onclick="toggleDrawer('bottom')">玩家詳情</button>
-        <div id="activePlayerContent" class="p-5"></div>
+        <div id="activePlayerContent" class="p-5" onclick="event.stopPropagation()"></div>
     </div>
 
-    <div id="topCollapsedSummary" class="fixed left-1/2 -translate-x-1/2 top-1 z-30 pointer-events-none hidden"></div>
+    <div id="topCollapsedSummary" class="fixed left-1/2 -translate-x-1/2 top-1 z-40 pointer-events-none hidden"></div>
 
     <!-- 置中地圖 -->
-    <div class="relative flex items-center justify-center min-h-screen z-10 map-stage">
+    <div class="relative flex items-center justify-center min-h-screen z-0 map-stage">
         <div class="bg-slate-900/40 rounded-[2rem] border border-slate-800/50 p-4 flex items-center justify-center min-h-[500px] max-w-[90vw]">
             <div id="mapContainer">
                 <img id="bgMapImage" src="https://raw.githubusercontent.com/trolldaddy/cube_escape/b03b1311f1a19acb5841f42579a0e78f2033ce48/p650925325.jpg" alt="地圖" onload="renderZones()">
@@ -219,6 +219,7 @@
                 }
             }
             if (players.length > 0) selectedUid = players[0].uid;
+            initializeDrawers();
             renderAll();
         };
         function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify({ players, clearedRooms: Array.from(clearedRooms), lockedPoisonFloors: Array.from(lockedPoisonFloors), settlementInputs, settlementHistory, viewRound })); }
@@ -234,6 +235,12 @@
             el.style.transform = transforms[which][desired];
             el.dataset.state = desired;
             renderPoisonState();
+        }
+
+        function initializeDrawers() {
+            toggleDrawer('top', 'closed');
+            toggleDrawer('left', 'closed');
+            toggleDrawer('bottom', 'closed');
         }
 
         function ensureSettlementInputs() {
