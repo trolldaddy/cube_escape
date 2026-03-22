@@ -11,6 +11,7 @@
         body { font-family: 'Noto+Sans+TC', sans-serif; background-color: #020617; color: #e2e8f0; touch-action: manipulation; overflow-x: hidden; }
         body.google-sites-mode { padding: 8px !important; }
         body.google-sites-mode .drawer-panel { box-shadow: none; backdrop-filter: none; }
+        body.bottom-drawer-open .map-stage { transform: translateY(-110px); }
 
         /* 地圖相關樣式 */
         #mapContainer { position: relative; width: fit-content; margin: 0 auto; background-color: #0f172a; border-radius: 1.5rem; border: 2px solid #1e293b; overflow: hidden; }
@@ -70,6 +71,7 @@
         @media (max-width: 640px) {
             :root { --top-peek: 82px; }
             .map-stage { transform: translateY(-32px); }
+            body.bottom-drawer-open .map-stage { transform: translateY(-86px); }
         }
 
         /* 上方抽屜佈局：固定摘要列、表格滾動 */
@@ -115,12 +117,6 @@
                 <input id="initialStrInput" type="number" min="0" value="4" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 font-bold text-sm" placeholder="武力">
                 <input id="initialSpdInput" type="number" min="0" value="3" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 font-bold text-sm" placeholder="速度">
                 <input id="initialLodInput" type="number" min="0" value="3" class="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 font-bold text-sm" placeholder="負重">
-            </div>
-            <div class="space-y-2">
-                <label class="text-[10px] uppercase tracking-widest text-slate-500 font-black">當前行動玩家</label>
-                <select id="activePlayerSelect" onchange="setActivePlayer(this.value)" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 font-bold text-sm">
-                    <option value="">--</option>
-                </select>
             </div>
             <div class="space-y-2">
                 <label class="text-[10px] uppercase tracking-widest text-slate-500 font-black">控制室解除毒氣房間</label>
@@ -185,7 +181,7 @@
     </div>
 
     <!-- 底部抽屜：當前玩家詳細 -->
-    <div id="bottomDrawer" data-state="closed" class="drawer-panel fixed left-1/2 -translate-x-1/2 bottom-4 w-[96vw] max-w-[1200px] bg-slate-900/95 border border-slate-800 rounded-3xl shadow-2xl transition-all duration-300" style="transform: translate(-50%, 70%);">
+    <div id="bottomDrawer" data-state="closed" class="drawer-panel fixed left-1/2 -translate-x-1/2 bottom-4 w-[96vw] max-w-[1200px] max-h-[58vh] overflow-y-auto bg-slate-900/95 border border-slate-800 rounded-3xl shadow-2xl transition-all duration-300" style="transform: translate(-50%, 70%);">
         <button id="bottomHandle" class="drawer-handle left-1/2 -translate-x-1/2 -top-10 px-4 py-2" onclick="toggleDrawer('bottom')">玩家詳情</button>
         <div id="activePlayerContent" class="p-5" onclick="event.stopPropagation()"></div>
     </div>
@@ -194,7 +190,9 @@
 
     <!-- 右側抽屜：快捷玩家列 -->
     <div id="rightDrawer" data-state="closed" class="drawer-panel fixed right-3 top-1/2 w-48 max-w-[70vw] bg-slate-900/95 border border-slate-800 rounded-2xl shadow-2xl transition-all duration-300" style="transform: translate(88%, -50%);">
-        <button id="rightHandle" class="drawer-handle -left-10 top-1/2 -translate-y-1/2 px-2 py-3" onclick="toggleDrawer('right')" style="writing-mode: vertical-rl; text-orientation: mixed; letter-spacing: 2px;">玩家快捷</button>
+        <button id="rightHandle" class="drawer-handle -left-10 top-1/2 -translate-y-1/2 px-2 py-3" onclick="toggleDrawer('right')">
+            <span class="flex flex-col leading-none gap-1 text-xs"><span>玩</span><span>家</span><span>快</span><span>捷</span></span>
+        </button>
         <div id="quickPlayerRail" class="p-2 max-h-[72vh] overflow-y-auto space-y-2"></div>
     </div>
 
@@ -346,6 +344,9 @@
             const desired = targetState || (el.dataset.state === 'open' ? 'closed' : 'open');
             el.style.transform = transforms[which][desired];
             el.dataset.state = desired;
+            if (which === 'bottom') {
+                document.body.classList.toggle('bottom-drawer-open', desired === 'open');
+            }
             renderPoisonState();
         }
 
@@ -831,17 +832,6 @@
         }
 
         function renderSelectOptions() {
-            const select = document.getElementById('activePlayerSelect');
-            const current = select.value;
-            select.innerHTML = '<option value="">--</option>';
-            players.forEach(p => {
-                const opt = document.createElement('option');
-                opt.value = p.uid;
-                opt.textContent = p.name;
-                if (p.uid == selectedUid || p.uid == current) opt.selected = true;
-                select.appendChild(opt);
-            });
-
             const clearSelect = document.getElementById('clearRoomSelect');
             const existing = clearSelect.value;
             clearSelect.innerHTML = '<option value="">-- 無 --</option>';
