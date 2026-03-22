@@ -66,6 +66,17 @@
         .drawer-panel { backdrop-filter: blur(6px); z-index: 60; }
         #leftHandle { writing-mode: vertical-rl; text-orientation: mixed; letter-spacing: 2px; }
 
+        /* 抽屜整體字級提升（+2 級） */
+        .drawer-panel .text-\[9px\] { font-size: 11px !important; }
+        .drawer-panel .text-\[10px\] { font-size: 12px !important; }
+        .drawer-panel .text-\[11px\] { font-size: 13px !important; }
+        .drawer-panel .text-xs { font-size: 0.95rem !important; }
+        .drawer-panel .text-sm { font-size: 1.05rem !important; }
+        .drawer-panel .text-base { font-size: 1.15rem !important; }
+        .drawer-panel .text-lg { font-size: 1.3rem !important; }
+        .drawer-panel .text-xl { font-size: 1.45rem !important; }
+        .drawer-handle { font-size: 15px; }
+
         /* 地圖微調位置，避免底部抽屜遮擋 */
         .map-stage { transform: translateY(-48px); }
         @media (max-width: 640px) {
