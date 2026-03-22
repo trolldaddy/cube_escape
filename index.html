@@ -192,8 +192,11 @@
 
     <div id="topCollapsedSummary" class="fixed left-1/2 -translate-x-1/2 top-1 z-40 pointer-events-none hidden"></div>
 
-    <!-- 右側快捷玩家列 -->
-    <div id="quickPlayerRail" class="fixed right-3 top-1/2 -translate-y-1/2 z-50 w-44 max-h-[72vh] overflow-y-auto space-y-2"></div>
+    <!-- 右側抽屜：快捷玩家列 -->
+    <div id="rightDrawer" data-state="closed" class="drawer-panel fixed right-3 top-1/2 w-48 max-w-[70vw] bg-slate-900/95 border border-slate-800 rounded-2xl shadow-2xl transition-all duration-300" style="transform: translate(88%, -50%);">
+        <button id="rightHandle" class="drawer-handle -left-10 top-1/2 -translate-y-1/2 px-2 py-3" onclick="toggleDrawer('right')" style="writing-mode: vertical-rl; text-orientation: mixed; letter-spacing: 2px;">玩家快捷</button>
+        <div id="quickPlayerRail" class="p-2 max-h-[72vh] overflow-y-auto space-y-2"></div>
+    </div>
 
     <!-- 置中地圖 -->
     <div class="relative flex items-center justify-center min-h-screen z-0 map-stage">
@@ -327,10 +330,17 @@
         }
 
         function toggleDrawer(which, targetState) {
-            const el = which === 'top' ? document.getElementById('topDrawer') : which === 'left' ? document.getElementById('leftDrawer') : document.getElementById('bottomDrawer');
+            const el = which === 'top'
+                ? document.getElementById('topDrawer')
+                : which === 'left'
+                    ? document.getElementById('leftDrawer')
+                    : which === 'right'
+                        ? document.getElementById('rightDrawer')
+                        : document.getElementById('bottomDrawer');
             const transforms = {
                 top: { open: 'translate(-50%, 0)', closed: 'translate(-50%, calc(-100% + var(--top-peek)))' },
                 left: { open: 'translate(0, -50%)', closed: 'translate(-92%, -50%)' },
+                right: { open: 'translate(0, -50%)', closed: 'translate(88%, -50%)' },
                 bottom: { open: 'translate(-50%, 0)', closed: 'translate(-50%, 70%)' }
             };
             const desired = targetState || (el.dataset.state === 'open' ? 'closed' : 'open');
@@ -342,6 +352,7 @@
         function initializeDrawers() {
             toggleDrawer('top', 'closed');
             toggleDrawer('left', 'closed');
+            toggleDrawer('right', 'closed');
             toggleDrawer('bottom', 'closed');
         }
 
