@@ -125,7 +125,7 @@
                     <button onclick="triggerImport()" class="bg-indigo-900 py-2 rounded-xl font-black text-indigo-100 text-xs">匯入 JSON</button>
                 </div>
                 <input id="importStateInput" type="file" accept="application/json" class="hidden" onchange="importStateFromFile(event)">
-                <div id="backupHint" class="text-[10px] text-slate-500">建議在 Google Sites 每回合匯出備份。</div>
+                <div id="backupHint" class="text-[10px] text-slate-500">可選保險：重要節點手動匯出 JSON。</div>
             </div>
         </div>
     </div>
@@ -206,36 +206,8 @@
         let settlementInputs = {};
         let settlementHistory = [];
         let viewRound = 'current';
-        let storageWarning = '';
-        let memoryStorageSnapshot = '';
         const EMBEDDED_ON_GOOGLE_SITES = window.self !== window.top;
         const STORAGE_KEY = 'cube_escape_v8_refined';
-        const safeStorage = {
-            getItem(key) {
-                try {
-                    return window.localStorage.getItem(key);
-                } catch (error) {
-                    storageWarning = '目前執行環境限制了本機儲存，改用暫存記憶體模式。';
-                    return memoryStorageSnapshot || null;
-                }
-            },
-            setItem(key, value) {
-                memoryStorageSnapshot = value;
-                try {
-                    window.localStorage.setItem(key, value);
-                } catch (error) {
-                    storageWarning = '目前執行環境限制了本機儲存，改用暫存記憶體模式。';
-                }
-            },
-            removeItem(key) {
-                memoryStorageSnapshot = '';
-                try {
-                    window.localStorage.removeItem(key);
-                } catch (error) {
-                    storageWarning = '目前執行環境限制了本機儲存，改用暫存記憶體模式。';
-                }
-            }
-        };
         const mapConfig = [{"id":"201","name":"基因庫","x":27.65,"y":8.31,"w":18.41,"h":10.51},{"id":"202","name":"停機坪","x":67.44,"y":9.76,"w":23.60,"h":8.56},{"id":"101","name":"水塔","x":16.44,"y":18.17,"w":6.03,"h":9.91},{"id":"102","name":"激光室","x":27.87,"y":18.72,"w":18.20,"h":8.86},{"id":"103","name":"*","x":68.92,"y":18.72,"w":6.88,"h":8.71},{"id":"104","name":"#","x":76.54,"y":18.57,"w":14.39,"h":9.01},{"id":"B101","name":"控制室","x":9.24,"y":28.18,"w":6.88,"h":9.16},{"id":"B102","name":"#","x":16.54,"y":28.48,"w":5.61,"h":9.01},{"id":"B103","name":"*","x":22.89,"y":28.33,"w":4.44,"h":9.16},{"id":"B104","name":"#","x":27.87,"y":28.48,"w":18.10,"h":9.01},{"id":"B105","name":"回收站","x":46.70,"y":28.63,"w":10.58,"h":8.71},{"id":"B106","name":"#","x":72.52,"y":28.63,"w":7.20,"h":9.01},{"id":"B107","name":"武器庫","x":80.14,"y":28.43,"w":10.58,"h":9.01},{"id":"B201","name":"#","x":9.14,"y":38.34,"w":10.58,"h":9.01},{"id":"B202","name":"手術室","x":20.35,"y":38.49,"w":7.09,"h":8.56},{"id":"B203","name":"#","x":27.87,"y":38.24,"w":10.69,"h":8.86},{"id":"B204","name":"餐廳","x":38.87,"y":38.24,"w":7.20,"h":9.16},{"id":"B205","name":"#","x":46.70,"y":38.24,"w":6.67,"h":9.16},{"id":"B206","name":"金庫","x":68.92,"y":38.19,"w":21.80,"h":9.31},{"id":"B301","name":"藥房","x":9.14,"y":48.10,"w":6.77,"h":8.71},{"id":"B302","name":"#","x":16.65,"y":47.95,"w":6.88,"h":9.16},{"id":"B303","name":"*","x":24.06,"y":48.10,"w":6.88,"h":9.01},{"id":"B304","name":"操作室","x":31.46,"y":48.10,"w":7.20,"h":8.86},{"id":"B305","name":"#","x":39.08,"y":47.95,"w":14.39,"h":9.01},{"id":"B306","name":"#","x":68.92,"y":47.95,"w":4.44,"h":9.01},{"id":"B307","name":"*","x":73.90,"y":47.80,"w":9.63,"h":9.61},{"id":"B308","name":"#","x":83.84,"y":47.95,"w":7.20,"h":9.16},{"id":"B401","name":"#","x":31.57,"y":57.86,"w":14.39,"h":9.01},{"id":"B402","name":"*","x":46.60,"y":57.71,"w":6.67,"h":9.31},{"id":"B403","name":"傳送室","x":68.92,"y":57.71,"w":6.88,"h":9.16},{"id":"B404","name":"#","x":76.44,"y":57.86,"w":6.88,"h":8.71},{"id":"B405","name":"#","x":83.74,"y":57.86,"w":6.98,"h":9.01},{"id":"B501","name":"大倉庫","x":9.14,"y":57.86,"w":21.69,"h":18.62},{"id":"B502","name":"#","x":31.57,"y":67.62,"w":10.58,"h":8.86},{"id":"B503","name":"垃圾場","x":42.79,"y":67.77,"w":14.39,"h":9.01},{"id":"B504","name":"#","x":68.92,"y":67.77,"w":10.58,"h":9.01},{"id":"B505","name":"糧倉","x":80.14,"y":67.62,"w":10.79,"h":9.16},{"id":"B601","name":"酒窖","x":27.87,"y":77.23,"w":17.99,"h":9.31},{"id":"B602","name":"#","x":46.49,"y":77.38,"w":10.69,"h":9.01},{"id":"B603","name":"*","x":57.71,"y":77.38,"w":10.58,"h":9.01},{"id":"B604","name":"#","x":68.92,"y":77.38,"w":10.69,"h":9.01},{"id":"B701","name":"停屍間","x":46.81,"y":87.29,"w":10.26,"h":9.01}];
 
         window.onload = () => {
@@ -243,7 +215,7 @@
                 document.body.classList.add('google-sites-mode');
             }
 
-            const saved = safeStorage.getItem(STORAGE_KEY);
+            const saved = localStorage.getItem(STORAGE_KEY);
             if (saved) {
                 try {
                     const parsed = JSON.parse(saved);
@@ -279,7 +251,7 @@
             };
         }
 
-        function save() { safeStorage.setItem(STORAGE_KEY, JSON.stringify(serializeState())); }
+        function save() { localStorage.setItem(STORAGE_KEY, JSON.stringify(serializeState())); }
 
         function applyImportedState(parsed) {
             players = Array.isArray(parsed.players) ? parsed.players : [];
@@ -862,10 +834,6 @@
                 });
             }
 
-            if (storageWarning) {
-                chipDefs.push({ label: storageWarning, className: 'bg-violet-500/20 text-violet-100 border border-violet-500/40' });
-            }
-
             const makeChipHtml = (label, color) => `<span class="px-2 py-1 rounded-lg text-[10px] font-black ${color}">${label}</span>`;
             const chipsHtml = chipDefs.map(def => makeChipHtml(def.label, def.className)).join('');
 
@@ -1056,7 +1024,7 @@
 
         function updatePlayer(uid, field, val) { const p = players.find(x => x.uid === uid); if(p) { p[field] = val; renderAll(); save(); } }
         function removePlayer(uid) { if(confirm('確定移除玩家？')) { players = players.filter(x => x.uid !== uid); delete settlementInputs[uid]; if (selectedUid === uid) selectedUid = players[0]?.uid || null; renderAll(); save(); } }
-        function resetData() { if(confirm('抹除所有緩存數據？')) { players = []; clearedRooms = new Set(); lockedPoisonFloors = new Set(); safeStorage.removeItem(STORAGE_KEY); selectedUid = null; renderAll(); } }
+        function resetData() { if(confirm('抹除所有緩存數據？')) { players = []; clearedRooms = new Set(); lockedPoisonFloors = new Set(); localStorage.removeItem(STORAGE_KEY); selectedUid = null; renderAll(); } }
     </script>
 </body>
 </html>
