@@ -192,6 +192,9 @@
 
     <div id="topCollapsedSummary" class="fixed left-1/2 -translate-x-1/2 top-1 z-40 pointer-events-none hidden"></div>
 
+    <!-- 右側快捷玩家列 -->
+    <div id="quickPlayerRail" class="fixed right-3 top-1/2 -translate-y-1/2 z-50 w-44 max-h-[72vh] overflow-y-auto space-y-2"></div>
+
     <!-- 置中地圖 -->
     <div class="relative flex items-center justify-center min-h-screen z-0 map-stage">
         <div class="bg-slate-900/40 rounded-[2rem] border border-slate-800/50 p-4 flex items-center justify-center min-h-[500px] max-w-[90vw]">
@@ -592,7 +595,22 @@
             selectedUid = uid;
             isAimingMode = false;
             isMoveMode = false;
+            focusSelectedPlayerOnMap();
             renderAll();
+        }
+
+        function focusSelectedPlayerOnMap() {
+            const tip = document.getElementById('mapStatusTip');
+            const player = players.find(x => x.uid === selectedUid);
+            if (!tip || !player) return;
+            tip.classList.remove('hidden');
+            tip.innerText = `📍 ${player.name}：${player.currentRoomId || '未定位'}`;
+            window.clearTimeout(focusSelectedPlayerOnMap._timer);
+            focusSelectedPlayerOnMap._timer = window.setTimeout(() => {
+                if (!isMoveMode && !isAimingMode) {
+                    tip.classList.add('hidden');
+                }
+            }, 1800);
         }
 
         function toggleItem(evt, uid, key) {
@@ -747,7 +765,31 @@
             save();
         }
 
-        function renderAll() { syncShadowStates(); renderSummary(); renderZones(); renderActivePlayer(); renderSelectOptions(); renderRoundViewer(); renderPoisonState(); }
+        function renderAll() { syncShadowStates(); renderSummary(); renderZones(); renderActivePlayer(); renderSelectOptions(); renderRoundViewer(); renderPoisonState(); renderQuickPlayerRail(); }
+
+        function renderQuickPlayerRail() {
+            const rail = document.getElementById('quickPlayerRail');
+            if (!rail) return;
+            rail.innerHTML = '';
+            players.forEach(p => {
+                const isActive = p.uid === selectedUid;
+                const btn = document.createElement('button');
+                btn.className = `w-full text-left rounded-xl border px-3 py-2 transition-all ${isActive ? 'bg-blue-600/90 border-blue-300 text-white' : 'bg-slate-900/90 border-slate-700 text-slate-200 hover:border-blue-500'}`;
+                btn.innerHTML = `
+                    <div class="text-[12px] font-black truncate">${p.name}</div>
+                    <div class="text-[10px] opacity-80 mt-1">${p.currentRoomId || '未定位'}</div>
+                    <div class="text-[11px] font-black mt-1 ${p.hp <= 3 ? 'text-red-300' : 'text-emerald-300'}">HP ${p.hp}</div>
+                `;
+                btn.onclick = () => {
+                    selectedUid = p.uid;
+                    isAimingMode = false;
+                    isMoveMode = false;
+                    focusSelectedPlayerOnMap();
+                    renderAll();
+                };
+                rail.appendChild(btn);
+            });
+        }
 
         function syncShadowStates() {
             let mutated = false;
