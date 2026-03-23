@@ -7,7 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap');
-        :root { --top-peek: 72px; --bottom-peek: 260px; }
+        :root { --top-peek: 72px; --bottom-peek: 185px; }
         body { font-family: 'Noto+Sans+TC', sans-serif; background-color: #020617; color: #e2e8f0; touch-action: manipulation; overflow-x: hidden; }
         body.google-sites-mode { padding: 8px !important; }
         body.google-sites-mode .drawer-panel { box-shadow: none; backdrop-filter: none; }
@@ -80,7 +80,7 @@
         /* 地圖微調位置，避免底部抽屜遮擋 */
         .map-stage { transform: translateY(-48px); }
         @media (max-width: 640px) {
-            :root { --top-peek: 82px; --bottom-peek: 240px; }
+            :root { --top-peek: 82px; --bottom-peek: 170px; }
             .map-stage { transform: translateY(-32px); }
             body.bottom-drawer-open .map-stage { transform: translateY(-86px); }
         }
