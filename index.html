@@ -7,15 +7,15 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap');
-        :root { --top-peek: 72px; --bottom-peek: 230px; }
+        :root { --top-peek: 72px; --bottom-peek: 260px; }
         body { font-family: 'Noto+Sans+TC', sans-serif; background-color: #020617; color: #e2e8f0; touch-action: manipulation; overflow-x: hidden; }
         body.google-sites-mode { padding: 8px !important; }
         body.google-sites-mode .drawer-panel { box-shadow: none; backdrop-filter: none; }
         body.bottom-drawer-open .map-stage { transform: translateY(-110px); }
 
         /* 地圖相關樣式 */
-        #mapContainer { position: relative; width: fit-content; margin: 0 auto; background-color: #0f172a; border-radius: 1.5rem; border: 2px solid #1e293b; overflow: hidden; }
-        #bgMapImage { display: block; max-width: 100%; height: auto; z-index: 5; }
+        #mapContainer { position: relative; width: min(96vw, 1120px); margin: 0 auto; background-color: #0f172a; border-radius: 1.5rem; border: 2px solid #1e293b; overflow: hidden; }
+        #bgMapImage { display: block; width: 100%; height: auto; z-index: 5; }
         #interactionOverlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 20; }
         .room-zone { position: absolute; cursor: pointer; border: 1px solid transparent; transition: all 0.2s; display: flex; align-items: center; justify-content: center; }
         .room-target { background-color: rgba(59, 130, 246, 0.2) !important; border: 2px solid #3b82f6 !important; }
@@ -80,7 +80,7 @@
         /* 地圖微調位置，避免底部抽屜遮擋 */
         .map-stage { transform: translateY(-48px); }
         @media (max-width: 640px) {
-            :root { --top-peek: 82px; --bottom-peek: 210px; }
+            :root { --top-peek: 82px; --bottom-peek: 240px; }
             .map-stage { transform: translateY(-32px); }
             body.bottom-drawer-open .map-stage { transform: translateY(-86px); }
         }
@@ -207,7 +207,7 @@
     </div>
 
     <!-- 底部抽屜：當前玩家詳細 -->
-    <div id="bottomDrawer" data-state="closed" class="drawer-panel fixed left-1/2 -translate-x-1/2 bottom-4 w-[96vw] max-w-[1200px] max-h-[58vh] bg-slate-900/95 border border-slate-800 rounded-3xl shadow-2xl transition-all duration-300" style="transform: translate(-50%, calc(100% - var(--bottom-peek)));">
+    <div id="bottomDrawer" data-state="closed" class="drawer-panel fixed left-1/2 -translate-x-1/2 bottom-4 w-[98vw] max-w-[1400px] max-h-[58vh] bg-slate-900/95 border border-slate-800 rounded-3xl shadow-2xl transition-all duration-300" style="transform: translate(-50%, calc(100% - var(--bottom-peek)));">
         <button id="bottomHandle" class="drawer-handle left-1/2 -translate-x-1/2 -top-10 px-4 py-2" onclick="toggleDrawer('bottom')">玩家詳情</button>
         <div id="activePlayerContent" class="p-5 max-h-[calc(58vh-16px)] overflow-y-auto" onclick="event.stopPropagation()"></div>
     </div>
