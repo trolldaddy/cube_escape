@@ -479,6 +479,7 @@
 
             // 戰鬥 / 亂鬥 / 暗影邏輯
             const battleDelta = {};
+            const shadowGain = {};
             const battleLabel = {};
             const pushLabel = (uid, label) => {
                 const parts = new Set((battleLabel[uid] || '').split(' ').filter(Boolean));
@@ -523,6 +524,9 @@
                         battleDelta[p.uid] = (battleDelta[p.uid] || 0) - 1;
                         pushLabel(p.uid, '暗影');
                     });
+                    shadows.forEach(s => {
+                        shadowGain[s.uid] = (shadowGain[s.uid] || 0) + livingGroup.length;
+                    });
                 }
             });
 
@@ -539,6 +543,8 @@
                 const hunger = isLandingRound ? 0 : (settlementInputs[p.uid]?.hunger ?? 0);
                 const consumable = isLandingRound ? 'none' : (settlementInputs[p.uid]?.consumable || 'none');
                 const consumableDelta = getConsumableDelta(consumable);
+                const shadowDrainGain = shadowGain[p.uid] || 0;
+                const shadowDrainTotal = (p.shadowDrainTotal || 0) + shadowDrainGain;
 
                 const clampHp = (val) => Math.max(0, Math.min(10, val));
                 let runningHp = clampHp(p.hp + surgeryDelta);
@@ -562,6 +568,8 @@
                     rocketDelta,
                     consumable,
                     consumableDelta,
+                    shadowDrainGain,
+                    shadowDrainTotal,
                     newHp,
                 };
             });
@@ -613,7 +621,7 @@
             const initialSpd = Math.max(0, parseInt(document.getElementById('initialSpdInput').value || '0', 10));
             const initialLod = Math.max(0, parseInt(document.getElementById('initialLodInput').value || '0', 10));
             if (!name || !initialRoom) return;
-            players.push({ uid: Date.now(), name, hp: 10, currentRoomId: initialRoom, gasStatus: false, poisonFloor: '', tenVote: false, isShadow: false, str: initialStr, spd: initialSpd, lod: initialLod, rocketTarget: '', recyclerUsed: false, weapons: { shotgun: 0, pistol: 0, knife: 0 }, items: { mask: false, rope: false, adrenaline: false, recycler: false, rocketLauncher: false, dimensionPocket: false } });
+            players.push({ uid: Date.now(), name, hp: 10, currentRoomId: initialRoom, gasStatus: false, poisonFloor: '', tenVote: false, isShadow: false, everShadow: false, shadowDrainTotal: 0, str: initialStr, spd: initialSpd, lod: initialLod, rocketTarget: '', recyclerUsed: false, weapons: { shotgun: 0, pistol: 0, knife: 0 }, items: { mask: false, rope: false, adrenaline: false, recycler: false, rocketLauncher: false, dimensionPocket: false } });
             document.getElementById('playerNameInput').value = '';
             document.getElementById('initialRoomInput').value = '';
             settlementInputs[players[players.length - 1].uid] = { hunger: 0, consumable: 'none' };
@@ -742,7 +750,7 @@
                 </tr>
             `).join('');
 
-            const announcementHtml = round === 0 ? '' : buildSettlementAnnouncements(rows, hungerOptions);
+            const announcementHtml = buildSettlementAnnouncements(rows, hungerOptions, round);
 
             resultContent.innerHTML = `
                 ${headerNote}
@@ -759,7 +767,7 @@
                 ${announcementHtml}`;
         }
 
-        function buildSettlementAnnouncements(rows, hungerOptions) {
+        function buildSettlementAnnouncements(rows, hungerOptions, round) {
             const roomMap = {};
             rows.forEach(r => {
                 const room = (r.currentRoomId || '').toUpperCase();
@@ -790,21 +798,19 @@
                 ? `事件房間：${conflictRooms.join('、')}｜死亡：${conflictDeaths.length ? conflictDeaths.join('、') : '無'}`
                 : '本回合無戰鬥/亂鬥/暗影事件';
 
-            const poisonFloors = Array.from(getActivePoisonFloors(true)).sort();
+            const poisonFloors = round === 0 ? [] : Array.from(getActivePoisonFloors(true)).sort();
             const poisonDeaths = rows.filter(r => r.poisonDelta < 0 && r.newHp <= 0).map(r => r.name);
             const poisonText = poisonFloors.length
                 ? `毒氣蔓延樓層：${poisonFloors.join('、')}｜死亡：${poisonDeaths.length ? poisonDeaths.join('、') : '無'}`
                 : '目前無毒氣樓層';
 
-            const hungerTable = rows.map(r => `
-                <tr class="divide-x divide-slate-700">
-                    <td class="p-2">${r.name}</td>
-                    <td class="p-2 text-right">
-                        <select class="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-sm" onchange="updateHunger(${r.uid}, this.value)">
-                            ${hungerOptions.map(h => `<option value="${h}" ${r.hungerDelta === h ? 'selected' : ''}>${h}</option>`).join('')}
-                        </select>
-                    </td>
-                </tr>
+            const hungerHeaders = rows.map(r => `<th class="p-2 text-center min-w-[110px]">${r.name}</th>`).join('');
+            const hungerValues = rows.map(r => `
+                <td class="p-2 text-center">
+                    <select class="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-sm" onchange="updateHunger(${r.uid}, this.value)">
+                        ${hungerOptions.map(h => `<option value="${h}" ${r.hungerDelta === h ? 'selected' : ''}>${h}</option>`).join('')}
+                    </select>
+                </td>
             `).join('');
 
             const rocketRooms = [...new Set(rows.filter(r => r.rocketDelta < 0).map(r => r.currentRoomId).filter(Boolean))];
@@ -812,6 +818,9 @@
             const rocketText = rocketRooms.length
                 ? `火箭筒襲擊房間：${rocketRooms.join('、')}｜死亡：${rocketDeaths.length ? rocketDeaths.join('、') : '無'}`
                 : '本回合無火箭筒襲擊';
+
+            const revivedShadows = rows.filter(r => r.isShadow && (r.everShadow || r.isShadow) && r.shadowDrainTotal > 2).map(r => `${r.name}(${r.shadowDrainTotal})`);
+            const reviveText = revivedShadows.length ? `復活暗影玩家：${revivedShadows.join('、')}` : '本回合無可復活暗影玩家';
 
             return `
                 <div class="mt-4 space-y-2 text-sm text-slate-200">
@@ -823,12 +832,13 @@
                     <div class="overflow-x-auto border border-slate-700 rounded-lg">
                         <table class="w-full text-left text-sm">
                             <thead class="bg-slate-800/60 text-slate-300 font-black">
-                                <tr><th class="p-2">玩家</th><th class="p-2 text-right">飢餓扣血</th></tr>
+                                <tr>${hungerHeaders}</tr>
                             </thead>
-                            <tbody class="divide-y divide-slate-700">${hungerTable}</tbody>
+                            <tbody class="divide-y divide-slate-700"><tr>${hungerValues}</tr></tbody>
                         </table>
                     </div>
                     <div>5. ${rocketText}</div>
+                    <div>6. ${reviveText}</div>
                 </div>
             `;
         }
@@ -853,13 +863,19 @@
             players = rows.map(p => {
                 const becameShadow = p.newHp <= 0;
                 const nextShadow = p.isShadow || becameShadow;
+                const nextDrainTotal = p.shadowDrainTotal || 0;
+                const revivedFromShadow = nextShadow && (p.everShadow || p.isShadow || becameShadow) && nextDrainTotal > 2;
+                const finalShadow = revivedFromShadow ? false : nextShadow;
+                const finalHp = revivedFromShadow ? 1 : p.newHp;
                 return {
                     ...p,
-                    hp: p.newHp,
-                    isShadow: nextShadow,
-                    currentRoomId: nextShadow ? 'B701' : p.currentRoomId,
-                    poisonFloor: nextShadow ? '' : p.poisonFloor,
-                    tenVote: nextShadow ? false : p.tenVote,
+                    hp: finalHp,
+                    isShadow: finalShadow,
+                    everShadow: p.everShadow || p.isShadow || becameShadow,
+                    shadowDrainTotal: finalShadow ? nextDrainTotal : 0,
+                    currentRoomId: finalShadow ? 'B701' : p.currentRoomId,
+                    poisonFloor: finalShadow ? '' : p.poisonFloor,
+                    tenVote: finalShadow ? false : p.tenVote,
                     rocketTarget: '',
                     recyclerUsed: false,
                     items: { ...p.items, adrenaline: false }
@@ -908,9 +924,11 @@
             players.forEach(p => {
                 if (p.hp <= 0 && !p.isShadow) {
                     p.isShadow = true;
+                    p.everShadow = true;
                     p.currentRoomId = 'B701';
                     p.poisonFloor = '';
                     p.tenVote = false;
+                    p.shadowDrainTotal = p.shadowDrainTotal || 0;
                     mutated = true;
                 }
             });
