@@ -713,6 +713,7 @@
         function renderSettlementModal() {
             const rows = buildSettlementRows();
             const hungerOptions = [-0, -1, -2];
+            const round = parseInt(document.getElementById('gameRound').value);
             const resultContent = document.getElementById('resultContent');
             const winners = getWinningPoisonFloors();
             const newFloors = Array.from(winners).filter(f => !lockedPoisonFloors.has(f));
@@ -728,11 +729,7 @@
                     <td class="p-2 text-right">${r.surgeryDelta >= 0 ? '+' : ''}${r.surgeryDelta}</td>
                     <td class="p-2 text-right">${r.battleDelta >= 0 ? '+' : ''}${r.battleDelta}${r.battleLabel ? ' ' + r.battleLabel : ''}</td>
                     <td class="p-2 text-right">${r.poisonDelta}</td>
-                    <td class="p-2 text-right">
-                        <select class="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs" onchange="updateHunger(${r.uid}, this.value)">
-                            ${hungerOptions.map(h => `<option value="${h}" ${r.hungerDelta === h ? 'selected' : ''}>${h}</option>`).join('')}
-                        </select>
-                    </td>
+                    <td class="p-2 text-right">${r.hungerDelta}</td>
                     <td class="p-2 text-right">${r.rocketDelta}</td>
                     <td class="p-2 text-right">
                         <select class="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs" onchange="updateConsumable(${r.uid}, this.value)">
@@ -745,6 +742,8 @@
                 </tr>
             `).join('');
 
+            const announcementHtml = round === 0 ? '' : buildSettlementAnnouncements(rows, hungerOptions);
+
             resultContent.innerHTML = `
                 ${headerNote}
                 <div class="mt-2 overflow-x-auto">
@@ -756,7 +755,82 @@
                         </thead>
                         <tbody class="divide-y divide-slate-800">${tableBody}</tbody>
                     </table>
-                </div>`;
+                </div>
+                ${announcementHtml}`;
+        }
+
+        function buildSettlementAnnouncements(rows, hungerOptions) {
+            const roomMap = {};
+            rows.forEach(r => {
+                const room = (r.currentRoomId || '').toUpperCase();
+                if (!room) return;
+                (roomMap[room] = roomMap[room] || []).push(r);
+            });
+
+            const surgeryTargets = rows.filter(r => r.surgeryDelta > 0).map(r => r.name);
+            const surgeryText = surgeryTargets.length === 2 ? `手術室發生手術：${surgeryTargets.join('、')} 各 +4` : '手術室未發生手術';
+
+            const conflictRooms = [];
+            Object.entries(roomMap).forEach(([room, group]) => {
+                const living = group.filter(g => g.hp > 0 && !g.isShadow);
+                const shadows = group.filter(g => g.isShadow);
+                const flags = [];
+                if (room === 'B202') {
+                    if (living.length >= 3) flags.push('亂鬥');
+                } else if (living.length >= 3) {
+                    flags.push('亂鬥');
+                } else if (living.length === 2) {
+                    flags.push('戰鬥');
+                }
+                if (living.length > 0 && shadows.length > 0) flags.push('暗影相遇');
+                if (flags.length > 0) conflictRooms.push(`${room}(${flags.join('、')})`);
+            });
+            const conflictDeaths = rows.filter(r => r.battleDelta < 0 && r.newHp <= 0).map(r => r.name);
+            const conflictText = conflictRooms.length
+                ? `事件房間：${conflictRooms.join('、')}｜死亡：${conflictDeaths.length ? conflictDeaths.join('、') : '無'}`
+                : '本回合無戰鬥/亂鬥/暗影事件';
+
+            const poisonFloors = Array.from(getActivePoisonFloors(true)).sort();
+            const poisonDeaths = rows.filter(r => r.poisonDelta < 0 && r.newHp <= 0).map(r => r.name);
+            const poisonText = poisonFloors.length
+                ? `毒氣蔓延樓層：${poisonFloors.join('、')}｜死亡：${poisonDeaths.length ? poisonDeaths.join('、') : '無'}`
+                : '目前無毒氣樓層';
+
+            const hungerTable = rows.map(r => `
+                <tr class="divide-x divide-slate-700">
+                    <td class="p-2">${r.name}</td>
+                    <td class="p-2 text-right">
+                        <select class="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-sm" onchange="updateHunger(${r.uid}, this.value)">
+                            ${hungerOptions.map(h => `<option value="${h}" ${r.hungerDelta === h ? 'selected' : ''}>${h}</option>`).join('')}
+                        </select>
+                    </td>
+                </tr>
+            `).join('');
+
+            const rocketRooms = [...new Set(rows.filter(r => r.rocketDelta < 0).map(r => r.currentRoomId).filter(Boolean))];
+            const rocketDeaths = rows.filter(r => r.rocketDelta < 0 && r.newHp <= 0).map(r => r.name);
+            const rocketText = rocketRooms.length
+                ? `火箭筒襲擊房間：${rocketRooms.join('、')}｜死亡：${rocketDeaths.length ? rocketDeaths.join('、') : '無'}`
+                : '本回合無火箭筒襲擊';
+
+            return `
+                <div class="mt-4 space-y-2 text-sm text-slate-200">
+                    <div class="font-black text-amber-300">結算宣布順序</div>
+                    <div>1. ${surgeryText}</div>
+                    <div>2. ${conflictText}</div>
+                    <div>3. ${poisonText}</div>
+                    <div class="pt-1">4. 繳交水糧</div>
+                    <div class="overflow-x-auto border border-slate-700 rounded-lg">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-slate-800/60 text-slate-300 font-black">
+                                <tr><th class="p-2">玩家</th><th class="p-2 text-right">飢餓扣血</th></tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-700">${hungerTable}</tbody>
+                        </table>
+                    </div>
+                    <div>5. ${rocketText}</div>
+                </div>
+            `;
         }
 
         function processTurn() {
