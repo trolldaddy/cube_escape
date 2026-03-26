@@ -535,12 +535,15 @@
                 const maskOn = p.items?.mask;
                 const shadow = p.isShadow;
                 const gasOn = upperRoom ? isRoomPoisoned(upperRoom, activePoisonFloors) : false;
-                const poisonDelta = (!maskOn && gasOn && !shadow) ? -gasDmg : 0;
+                const reviveBuffActive = p.reviveBuffRound === round;
+                const poisonImmune = reviveBuffActive;
+                const rationExempt = (shadow && upperRoom === 'B204') || reviveBuffActive;
+                const poisonDelta = (!maskOn && gasOn && !shadow && !poisonImmune) ? -gasDmg : 0;
                 const rocketDelta = upperRoom ? -(rocketMap[upperRoom] || 0) : 0;
                 const surgeryDelta = surgeryBonus[p.uid] || 0;
                 const combatDelta = battleDelta[p.uid] || 0;
                 const combatLabel = battleLabel[p.uid] || '';
-                const hunger = isLandingRound ? 0 : (settlementInputs[p.uid]?.hunger ?? 0);
+                const hunger = (isLandingRound || rationExempt) ? 0 : (settlementInputs[p.uid]?.hunger ?? 0);
                 const consumable = isLandingRound ? 'none' : (settlementInputs[p.uid]?.consumable || 'none');
                 const consumableDelta = getConsumableDelta(consumable);
                 const shadowDrainGain = shadowGain[p.uid] || 0;
@@ -568,6 +571,9 @@
                     rocketDelta,
                     consumable,
                     consumableDelta,
+                    poisonImmune,
+                    rationExempt,
+                    reviveBuffActive,
                     shadowDrainGain,
                     shadowDrainTotal,
                     newHp,
@@ -621,7 +627,7 @@
             const initialSpd = Math.max(0, parseInt(document.getElementById('initialSpdInput').value || '0', 10));
             const initialLod = Math.max(0, parseInt(document.getElementById('initialLodInput').value || '0', 10));
             if (!name || !initialRoom) return;
-            players.push({ uid: Date.now(), name, hp: 10, currentRoomId: initialRoom, gasStatus: false, poisonFloor: '', tenVote: false, isShadow: false, everShadow: false, shadowDrainTotal: 0, str: initialStr, spd: initialSpd, lod: initialLod, rocketTarget: '', recyclerUsed: false, weapons: { shotgun: 0, pistol: 0, knife: 0 }, items: { mask: false, rope: false, adrenaline: false, recycler: false, rocketLauncher: false, dimensionPocket: false } });
+            players.push({ uid: Date.now(), name, hp: 10, currentRoomId: initialRoom, gasStatus: false, poisonFloor: '', tenVote: false, isShadow: false, everShadow: false, shadowDrainTotal: 0, reviveBuffRound: null, str: initialStr, spd: initialSpd, lod: initialLod, rocketTarget: '', recyclerUsed: false, weapons: { shotgun: 0, pistol: 0, knife: 0 }, items: { mask: false, rope: false, adrenaline: false, recycler: false, rocketLauncher: false, dimensionPocket: false } });
             document.getElementById('playerNameInput').value = '';
             document.getElementById('initialRoomInput').value = '';
             settlementInputs[players[players.length - 1].uid] = { hunger: 0, consumable: 'none' };
@@ -633,6 +639,22 @@
         function startLandingRound() {
             document.getElementById('gameRound').value = '0';
             processTurn();
+        }
+
+        function toggleShadowState(uid) {
+            const p = players.find(x => x.uid === uid);
+            if (!p) return;
+            p.isShadow = !p.isShadow;
+            if (p.isShadow) {
+                p.everShadow = true;
+                p.currentRoomId = 'B701';
+                p.poisonFloor = '';
+                p.tenVote = false;
+            } else if (p.hp <= 0) {
+                p.hp = 1;
+            }
+            renderAll();
+            save();
         }
 
         function setActivePlayer(uidStr) {
@@ -736,8 +758,8 @@
                     <td class="p-2 text-right">${r.baseHp}</td>
                     <td class="p-2 text-right">${r.surgeryDelta >= 0 ? '+' : ''}${r.surgeryDelta}</td>
                     <td class="p-2 text-right">${r.battleDelta >= 0 ? '+' : ''}${r.battleDelta}${r.battleLabel ? ' ' + r.battleLabel : ''}</td>
-                    <td class="p-2 text-right">${r.poisonDelta}</td>
-                    <td class="p-2 text-right">${r.hungerDelta}</td>
+                    <td class="p-2 text-right">${r.poisonImmune ? '免疫' : r.poisonDelta}</td>
+                    <td class="p-2 text-right">${r.rationExempt ? '免繳' : r.hungerDelta}</td>
                     <td class="p-2 text-right">${r.rocketDelta}</td>
                     <td class="p-2 text-right">
                         <select class="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs" onchange="updateConsumable(${r.uid}, this.value)">
@@ -807,9 +829,10 @@
             const hungerHeaders = rows.map(r => `<th class="p-2 text-center min-w-[110px]">${r.name}</th>`).join('');
             const hungerValues = rows.map(r => `
                 <td class="p-2 text-center">
+                    ${r.rationExempt ? '<span class="text-emerald-300 font-black">免繳</span>' : `
                     <select class="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-sm" onchange="updateHunger(${r.uid}, this.value)">
                         ${hungerOptions.map(h => `<option value="${h}" ${r.hungerDelta === h ? 'selected' : ''}>${h}</option>`).join('')}
-                    </select>
+                    </select>`}
                 </td>
             `).join('');
 
@@ -820,7 +843,7 @@
                 : '本回合無火箭筒襲擊';
 
             const revivedShadows = rows.filter(r => r.isShadow && (r.everShadow || r.isShadow) && r.shadowDrainTotal > 2).map(r => `${r.name}(${r.shadowDrainTotal})`);
-            const reviveText = revivedShadows.length ? `復活暗影玩家：${revivedShadows.join('、')}` : '本回合無可復活暗影玩家';
+            const reviveText = revivedShadows.length ? `復活暗影玩家：${revivedShadows.join('、')}（下回合免疫毒氣且免繳水糧）` : '本回合無可復活暗影玩家';
 
             return `
                 <div class="mt-4 space-y-2 text-sm text-slate-200">
@@ -867,12 +890,16 @@
                 const revivedFromShadow = nextShadow && (p.everShadow || p.isShadow || becameShadow) && nextDrainTotal > 2;
                 const finalShadow = revivedFromShadow ? false : nextShadow;
                 const finalHp = revivedFromShadow ? 1 : p.newHp;
+                const nextReviveBuffRound = revivedFromShadow
+                    ? round + 1
+                    : (p.reviveBuffRound && p.reviveBuffRound > round ? p.reviveBuffRound : null);
                 return {
                     ...p,
                     hp: finalHp,
                     isShadow: finalShadow,
                     everShadow: p.everShadow || p.isShadow || becameShadow,
                     shadowDrainTotal: finalShadow ? nextDrainTotal : 0,
+                    reviveBuffRound: finalShadow ? null : nextReviveBuffRound,
                     currentRoomId: finalShadow ? 'B701' : p.currentRoomId,
                     poisonFloor: finalShadow ? '' : p.poisonFloor,
                     tenVote: finalShadow ? false : p.tenVote,
@@ -929,6 +956,7 @@
                     p.poisonFloor = '';
                     p.tenVote = false;
                     p.shadowDrainTotal = p.shadowDrainTotal || 0;
+                    p.reviveBuffRound = null;
                     mutated = true;
                 }
             });
@@ -1117,6 +1145,7 @@
                             <span class="text-2xl font-black text-white">${p.name}</span>
                             <span class="room-badge">${p.currentRoomId || '??'}</span>
                             <button class="px-3 py-2 text-xs font-black bg-blue-600 rounded-xl" onclick="enableMoveMode()">移動</button>
+                            <button class="px-3 py-2 text-xs font-black rounded-xl ${p.isShadow ? 'bg-violet-600 text-white' : 'bg-slate-700 text-slate-100'}" onclick="toggleShadowState(${p.uid})">${p.isShadow ? '解除暗影' : '設為暗影'}</button>
                         </div>
                         <div class="flex items-center gap-3 text-xs font-black text-slate-300">
                             <label class="flex items-center gap-1">投毒樓層 ${poisonSelect}</label>
