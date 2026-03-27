@@ -906,7 +906,8 @@
                 const nextDrainTotal = p.shadowDrainTotal || 0;
                 const revivedFromShadow = nextShadow && (p.everShadow || p.isShadow || becameShadow) && nextDrainTotal >= 2;
                 const finalShadow = revivedFromShadow ? false : nextShadow;
-                const finalHp = revivedFromShadow ? 1 : p.newHp;
+                const reviveHp = Math.max(1, Math.min(10, nextDrainTotal));
+                const finalHp = revivedFromShadow ? reviveHp : p.newHp;
                 const nextReviveBuffRound = revivedFromShadow
                     ? round + 1
                     : (p.reviveBuffRound && p.reviveBuffRound > round ? p.reviveBuffRound : null);
