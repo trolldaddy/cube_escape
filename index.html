@@ -459,7 +459,7 @@
             const gasDmgList = [0, 1, 2, 2, 3, 3, 4];
             const gasDmg = gasDmgList[round];
             const activePoisonFloors = isLandingRound ? new Set() : getActivePoisonFloors(true);
-            const rocketMap = isLandingRound ? {} : buildRocketHitMap();
+            const rocketMap = buildRocketHitMap();
 
             // 預先計算戰鬥需要的力量與槍枝狀態
             const enriched = sourcePlayers.map(p => {
@@ -481,7 +481,7 @@
             // 手術：正巧兩位存活玩家在手術室 -> 各 +4（上限 10）
             const surgeryBonus = {};
             const surgeryGroup = (roomMap['B202'] || []).filter(p => p.hp > 0 && !p.isShadow);
-            if (!isLandingRound && surgeryGroup.length === 2) {
+            if (surgeryGroup.length === 2) {
                 surgeryGroup.forEach(p => surgeryBonus[p.uid] = 4);
             }
 
@@ -527,7 +527,7 @@
                     resolveCombat(livingGroup, room);
                 }
 
-                if (!isLandingRound && shadows.length > 0 && livingGroup.length > 0) {
+                if (shadows.length > 0 && livingGroup.length > 0) {
                     livingGroup.forEach(p => {
                         battleDelta[p.uid] = (battleDelta[p.uid] || 0) - 1;
                         pushLabel(p.uid, '暗影');
@@ -551,7 +551,7 @@
                 const surgeryDelta = Number(surgeryBonus[p.uid] || 0);
                 const combatDelta = Number(battleDelta[p.uid] || 0);
                 const combatLabel = battleLabel[p.uid] || '';
-                const hunger = (isLandingRound || rationExempt) ? 0 : Number(settlementInputs[p.uid]?.hunger ?? 0);
+                const hunger = rationExempt ? 0 : Number(settlementInputs[p.uid]?.hunger ?? 0);
                 const consumable = isLandingRound ? 'none' : (settlementInputs[p.uid]?.consumable || 'none');
                 const consumableDelta = Number(getConsumableDelta(consumable));
                 const shadowDrainGain = Number(shadowGain[p.uid] || 0);
