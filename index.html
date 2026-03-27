@@ -548,14 +548,14 @@
                 const rationExempt = (p.hp > 0 && upperRoom === 'B204') || shadow || reviveBuffActive;
                 const poisonDelta = (!maskOn && gasOn && !shadow && !poisonImmune) ? -gasDmg : 0;
                 const rocketDelta = upperRoom ? -(rocketMap[upperRoom] || 0) : 0;
-                const surgeryDelta = surgeryBonus[p.uid] || 0;
-                const combatDelta = battleDelta[p.uid] || 0;
+                const surgeryDelta = Number(surgeryBonus[p.uid] || 0);
+                const combatDelta = Number(battleDelta[p.uid] || 0);
                 const combatLabel = battleLabel[p.uid] || '';
-                const hunger = (isLandingRound || rationExempt) ? 0 : (settlementInputs[p.uid]?.hunger ?? 0);
+                const hunger = (isLandingRound || rationExempt) ? 0 : Number(settlementInputs[p.uid]?.hunger ?? 0);
                 const consumable = isLandingRound ? 'none' : (settlementInputs[p.uid]?.consumable || 'none');
-                const consumableDelta = getConsumableDelta(consumable);
-                const shadowDrainGain = shadowGain[p.uid] || 0;
-                const shadowDrainTotal = (p.shadowDrainTotal || 0) + shadowDrainGain;
+                const consumableDelta = Number(getConsumableDelta(consumable));
+                const shadowDrainGain = Number(shadowGain[p.uid] || 0);
+                const shadowDrainTotal = Number(p.shadowDrainTotal || 0) + shadowDrainGain;
 
                 const clampHp = (val) => Math.max(0, Math.min(10, val));
                 let runningHp = clampHp(p.hp + surgeryDelta);
@@ -750,7 +750,7 @@
 
         function renderSettlementModal() {
             const rows = buildSettlementRows();
-            const hungerOptions = [-0, -1, -2];
+            const hungerOptions = [0, -1, -2];
             const round = parseInt(document.getElementById('gameRound').value);
             const resultContent = document.getElementById('resultContent');
             const winners = getWinningPoisonFloors();
@@ -1018,8 +1018,10 @@
         function updateHunger(uid, val) {
             ensureSettlementInputs();
             settlementInputs[uid] = settlementInputs[uid] || { hunger: 0, consumable: 'none' };
-            settlementInputs[uid].hunger = parseInt(val, 10);
+            const parsed = parseInt(val, 10);
+            settlementInputs[uid].hunger = Number.isNaN(parsed) ? 0 : parsed;
             renderSettlementModal();
+            renderSummary();
             save();
         }
 
@@ -1028,6 +1030,7 @@
             settlementInputs[uid] = settlementInputs[uid] || { hunger: 0, consumable: 'none' };
             settlementInputs[uid].consumable = val;
             renderSettlementModal();
+            renderSummary();
             save();
         }
 
