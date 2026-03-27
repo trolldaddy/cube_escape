@@ -537,7 +537,7 @@
                 const gasOn = upperRoom ? isRoomPoisoned(upperRoom, activePoisonFloors) : false;
                 const reviveBuffActive = p.reviveBuffRound === round;
                 const poisonImmune = reviveBuffActive;
-                const rationExempt = (shadow && upperRoom === 'B204') || reviveBuffActive;
+                const rationExempt = (p.hp > 0 && upperRoom === 'B204') || shadow || reviveBuffActive;
                 const poisonDelta = (!maskOn && gasOn && !shadow && !poisonImmune) ? -gasDmg : 0;
                 const rocketDelta = upperRoom ? -(rocketMap[upperRoom] || 0) : 0;
                 const surgeryDelta = surgeryBonus[p.uid] || 0;
@@ -826,23 +826,29 @@
                 ? `毒氣蔓延樓層：${poisonFloors.join('、')}｜死亡：${poisonDeaths.length ? poisonDeaths.join('、') : '無'}`
                 : '目前無毒氣樓層';
 
-            const hungerHeaders = rows.map(r => `<th class="p-2 text-center min-w-[110px]">${r.name}</th>`).join('');
-            const hungerValues = rows.map(r => `
-                <td class="p-2 text-center">
-                    ${r.rationExempt ? '<span class="text-emerald-300 font-black">免繳</span>' : `
-                    <select class="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-sm" onchange="updateHunger(${r.uid}, this.value)">
-                        ${hungerOptions.map(h => `<option value="${h}" ${r.hungerDelta === h ? 'selected' : ''}>${h}</option>`).join('')}
-                    </select>`}
-                </td>
+            const hungerCells = rows.map(r => `
+                <div class="border border-slate-700 rounded-lg p-2 bg-slate-900/60">
+                    <div class="text-xs text-slate-300 font-black mb-1 text-center">${r.name}</div>
+                    <div class="text-center">
+                        ${r.rationExempt ? '<span class="text-emerald-300 font-black">免繳</span>' : `
+                        <select class="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-sm" onchange="updateHunger(${r.uid}, this.value)">
+                            ${hungerOptions.map(h => `<option value="${h}" ${r.hungerDelta === h ? 'selected' : ''}>${h}</option>`).join('')}
+                        </select>`}
+                    </div>
+                </div>
             `).join('');
 
             const rocketRooms = [...new Set(rows.filter(r => r.rocketDelta < 0).map(r => r.currentRoomId).filter(Boolean))];
+            const rocketShooterText = players
+                .filter(p => p.items?.rocketLauncher && p.rocketTarget)
+                .map(p => `${p.name}→${p.rocketTarget}`)
+                .join('、');
             const rocketDeaths = rows.filter(r => r.rocketDelta < 0 && r.newHp <= 0).map(r => r.name);
             const rocketText = rocketRooms.length
-                ? `火箭筒襲擊房間：${rocketRooms.join('、')}｜死亡：${rocketDeaths.length ? rocketDeaths.join('、') : '無'}`
+                ? `火箭筒襲擊：${rocketShooterText || rocketRooms.join('、')}｜受襲房間：${rocketRooms.join('、')}｜死亡：${rocketDeaths.length ? rocketDeaths.join('、') : '無'}`
                 : '本回合無火箭筒襲擊';
 
-            const revivedShadows = rows.filter(r => r.isShadow && (r.everShadow || r.isShadow) && r.shadowDrainTotal > 2).map(r => `${r.name}(${r.shadowDrainTotal})`);
+            const revivedShadows = rows.filter(r => r.isShadow && (r.everShadow || r.isShadow) && r.shadowDrainTotal >= 2).map(r => `${r.name}(${r.shadowDrainTotal})`);
             const reviveText = revivedShadows.length ? `復活暗影玩家：${revivedShadows.join('、')}（下回合免疫毒氣且免繳水糧）` : '本回合無可復活暗影玩家';
 
             return `
@@ -852,13 +858,8 @@
                     <div>2. ${conflictText}</div>
                     <div>3. ${poisonText}</div>
                     <div class="pt-1">4. 繳交水糧</div>
-                    <div class="overflow-x-auto border border-slate-700 rounded-lg">
-                        <table class="w-full text-left text-sm">
-                            <thead class="bg-slate-800/60 text-slate-300 font-black">
-                                <tr>${hungerHeaders}</tr>
-                            </thead>
-                            <tbody class="divide-y divide-slate-700"><tr>${hungerValues}</tr></tbody>
-                        </table>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2">
+                        ${hungerCells}
                     </div>
                     <div>5. ${rocketText}</div>
                     <div>6. ${reviveText}</div>
@@ -887,7 +888,7 @@
                 const becameShadow = p.newHp <= 0;
                 const nextShadow = p.isShadow || becameShadow;
                 const nextDrainTotal = p.shadowDrainTotal || 0;
-                const revivedFromShadow = nextShadow && (p.everShadow || p.isShadow || becameShadow) && nextDrainTotal > 2;
+                const revivedFromShadow = nextShadow && (p.everShadow || p.isShadow || becameShadow) && nextDrainTotal >= 2;
                 const finalShadow = revivedFromShadow ? false : nextShadow;
                 const finalHp = revivedFromShadow ? 1 : p.newHp;
                 const nextReviveBuffRound = revivedFromShadow
