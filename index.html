@@ -444,6 +444,14 @@
             return 0;
         }
 
+        function getRationExemptReason(row) {
+            const reasons = [];
+            if (row.isShadow) reasons.push('暗影');
+            if ((row.currentRoomId || '').toUpperCase() === 'B204' && row.hp > 0) reasons.push('餐廳');
+            if (row.reviveBuffActive) reasons.push('復活保護');
+            return reasons.join('/');
+        }
+
         function buildSettlementRows(sourcePlayers = players) {
             ensureSettlementInputs();
             const round = parseInt(document.getElementById('gameRound').value);
@@ -759,7 +767,7 @@
                     <td class="p-2 text-right">${r.surgeryDelta >= 0 ? '+' : ''}${r.surgeryDelta}</td>
                     <td class="p-2 text-right">${r.battleDelta >= 0 ? '+' : ''}${r.battleDelta}${r.battleLabel ? ' ' + r.battleLabel : ''}</td>
                     <td class="p-2 text-right">${r.poisonImmune ? '免疫' : r.poisonDelta}</td>
-                    <td class="p-2 text-right">${r.rationExempt ? '免繳' : r.hungerDelta}</td>
+                    <td class="p-2 text-right">${r.rationExempt ? `免繳(${getRationExemptReason(r) || '規則'})` : r.hungerDelta}</td>
                     <td class="p-2 text-right">${r.rocketDelta}</td>
                     <td class="p-2 text-right">
                         <select class="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs" onchange="updateConsumable(${r.uid}, this.value)">
@@ -797,8 +805,10 @@
                 (roomMap[room] = roomMap[room] || []).push(r);
             });
 
-            const surgeryTargets = rows.filter(r => r.surgeryDelta > 0).map(r => r.name);
-            const surgeryText = surgeryTargets.length === 2 ? `手術室發生手術：${surgeryTargets.join('、')} 各 +4` : '手術室未發生手術';
+            const surgeryGroup = (roomMap['B202'] || []).filter(r => r.hp > 0 && !r.isShadow);
+            const surgeryText = surgeryGroup.length === 2
+                ? `手術室發生手術：${surgeryGroup.map(r => r.name).join('、')} 各 +4`
+                : '手術室未發生手術';
 
             const conflictRooms = [];
             Object.entries(roomMap).forEach(([room, group]) => {
@@ -816,21 +826,27 @@
                 if (flags.length > 0) conflictRooms.push(`${room}(${flags.join('、')})`);
             });
             const conflictDeaths = rows.filter(r => r.battleDelta < 0 && r.newHp <= 0).map(r => r.name);
+            const shadowDrainLines = rows
+                .filter(r => r.shadowDrainGain > 0)
+                .map(r => `${r.name}+${r.shadowDrainGain}（累積${r.shadowDrainTotal}）`);
             const conflictText = conflictRooms.length
-                ? `事件房間：${conflictRooms.join('、')}｜死亡：${conflictDeaths.length ? conflictDeaths.join('、') : '無'}`
+                ? `事件房間：${conflictRooms.join('、')}｜死亡：${conflictDeaths.length ? conflictDeaths.join('、') : '無'}${shadowDrainLines.length ? `｜暗影吸收：${shadowDrainLines.join('、')}` : ''}`
                 : '本回合無戰鬥/亂鬥/暗影事件';
 
-            const poisonFloors = round === 0 ? [] : Array.from(getActivePoisonFloors(true)).sort();
+            const winningFloors = round === 0 ? [] : Array.from(getWinningPoisonFloors()).sort();
+            const existingPoisonFloors = round === 0 ? [] : Array.from(lockedPoisonFloors).sort();
+            const newPoisonFloors = winningFloors.filter(f => !lockedPoisonFloors.has(f));
+            const poisonFloors = round === 0 ? [] : Array.from(new Set([...existingPoisonFloors, ...winningFloors])).sort();
             const poisonDeaths = rows.filter(r => r.poisonDelta < 0 && r.newHp <= 0).map(r => r.name);
             const poisonText = poisonFloors.length
-                ? `毒氣蔓延樓層：${poisonFloors.join('、')}｜死亡：${poisonDeaths.length ? poisonDeaths.join('、') : '無'}`
+                ? `毒氣樓層：既有[${existingPoisonFloors.length ? existingPoisonFloors.join('、') : '無'}]＋新增[${newPoisonFloors.length ? newPoisonFloors.join('、') : '無'}]＝最終[${poisonFloors.join('、')}]｜死亡：${poisonDeaths.length ? poisonDeaths.join('、') : '無'}`
                 : '目前無毒氣樓層';
 
             const hungerCells = rows.map(r => `
                 <div class="border border-slate-700 rounded-lg p-2 bg-slate-900/60">
                     <div class="text-xs text-slate-300 font-black mb-1 text-center">${r.name}</div>
                     <div class="text-center">
-                        ${r.rationExempt ? '<span class="text-emerald-300 font-black">免繳</span>' : `
+                        ${r.rationExempt ? `<span class="text-emerald-300 font-black">免繳（${getRationExemptReason(r) || '規則'}）</span>` : `
                         <select class="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-sm" onchange="updateHunger(${r.uid}, this.value)">
                             ${hungerOptions.map(h => `<option value="${h}" ${r.hungerDelta === h ? 'selected' : ''}>${h}</option>`).join('')}
                         </select>`}
@@ -838,14 +854,14 @@
                 </div>
             `).join('');
 
-            const rocketRooms = [...new Set(rows.filter(r => r.rocketDelta < 0).map(r => r.currentRoomId).filter(Boolean))];
-            const rocketShooterText = players
+            const rocketLaunches = players
                 .filter(p => p.items?.rocketLauncher && p.rocketTarget)
-                .map(p => `${p.name}→${p.rocketTarget}`)
-                .join('、');
-            const rocketDeaths = rows.filter(r => r.rocketDelta < 0 && r.newHp <= 0).map(r => r.name);
-            const rocketText = rocketRooms.length
-                ? `火箭筒襲擊：${rocketShooterText || rocketRooms.join('、')}｜受襲房間：${rocketRooms.join('、')}｜死亡：${rocketDeaths.length ? rocketDeaths.join('、') : '無'}`
+                .map(p => ({ shooter: p.name, target: p.rocketTarget.toUpperCase() }));
+            const launchedRooms = [...new Set(rocketLaunches.map(r => r.target))];
+            const impactedRows = rows.filter(r => launchedRooms.includes((r.currentRoomId || '').toUpperCase()));
+            const rocketDeaths = impactedRows.filter(r => r.newHp <= 0).map(r => r.name);
+            const rocketText = launchedRooms.length
+                ? `火箭筒襲擊：${rocketLaunches.map(r => `${r.shooter}→${r.target}`).join('、')}｜受襲房間：${launchedRooms.join('、')}｜受襲玩家：${impactedRows.length ? impactedRows.map(r => r.name).join('、') : '無'}｜死亡：${rocketDeaths.length ? rocketDeaths.join('、') : '無'}`
                 : '本回合無火箭筒襲擊';
 
             const revivedShadows = rows.filter(r => r.isShadow && (r.everShadow || r.isShadow) && r.shadowDrainTotal >= 2).map(r => `${r.name}(${r.shadowDrainTotal})`);
@@ -1205,7 +1221,7 @@
                     <td class="p-3 text-right ${p.surgeryDelta>0?'text-emerald-400':'text-slate-300'}">${p.surgeryDelta>=0?'+':''}${p.surgeryDelta}</td>
                     <td class="p-3 text-right text-slate-300">${p.battleDelta>=0?'+':''}${p.battleDelta}${p.battleLabel ? ' '+p.battleLabel : ''}</td>
                     <td class="p-3 text-right text-red-400">${p.poisonDelta}</td>
-                    <td class="p-3 text-right text-amber-400">${p.hungerDelta}</td>
+                    <td class="p-3 text-right text-amber-400">${p.rationExempt ? `免繳(${getRationExemptReason(p) || '規則'})` : p.hungerDelta}</td>
                     <td class="p-3 text-right text-red-400">${p.rocketDelta}</td>
                     <td class="p-3 text-right text-emerald-300">${consumableLabel} ${p.consumableDelta?`(${p.consumableDelta>=0?'+':''}${p.consumableDelta})`:''}</td>
                     <td class="p-3 text-right text-amber-500 font-black">${p.newHp}</td>`;
