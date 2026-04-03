@@ -428,6 +428,12 @@
             return active;
         }
 
+        function getEffectivePoisonFloors() {
+            const floors = new Set(lockedPoisonFloors);
+            getWinningPoisonFloors().forEach(f => floors.add(f));
+            return floors;
+        }
+
         function buildRocketHitMap() {
             const map = {};
             players.forEach(shooter => {
@@ -458,7 +464,7 @@
             const isLandingRound = round === 0;
             const gasDmgList = [0, 1, 2, 2, 3, 3, 4];
             const gasDmg = gasDmgList[round];
-            const activePoisonFloors = isLandingRound ? new Set() : getActivePoisonFloors(true);
+            const activePoisonFloors = isLandingRound ? new Set() : getEffectivePoisonFloors();
             const rocketMap = buildRocketHitMap();
 
             // 預先計算戰鬥需要的力量與槍枝狀態
@@ -603,7 +609,7 @@
             const round = parseInt(document.getElementById('gameRound').value);
             const gasDmgList = [0, 1, 2, 2, 3, 3, 4];
             const gasDmg = gasDmgList[round];
-            const activePoisonFloors = getActivePoisonFloors(true);
+            const activePoisonFloors = getEffectivePoisonFloors();
 
             return players.map(p => {
                 let dmg = 0; let weightUsed = 0;
@@ -765,7 +771,7 @@
                     <td class="p-2 font-mono text-blue-400">${r.totalStr}/${r.finalSpdText}/${r.items.dimensionPocket ? '∞' : r.lod}</td>
                     <td class="p-2 text-right">${r.baseHp}</td>
                     <td class="p-2 text-right">${r.surgeryDelta >= 0 ? '+' : ''}${r.surgeryDelta}</td>
-                    <td class="p-2 text-right">${r.battleDelta >= 0 ? '+' : ''}${r.battleDelta}${r.battleLabel ? ' ' + r.battleLabel : ''}</td>
+                    <td class="p-2 text-right">${formatBattleDeltaCell(r)}</td>
                     <td class="p-2 text-right">${r.poisonImmune ? '免疫' : r.poisonDelta}</td>
                     <td class="p-2 text-right">${r.rationExempt ? `免繳(${getRationExemptReason(r) || '規則'})` : r.hungerDelta}</td>
                     <td class="p-2 text-right">${r.rocketDelta}</td>
@@ -952,6 +958,7 @@
                     <div class="text-[12px] font-black truncate">${p.name}</div>
                     <div class="text-[10px] opacity-80 mt-1">${p.currentRoomId || '未定位'}</div>
                     <div class="text-[11px] font-black mt-1 ${p.hp <= 3 ? 'text-red-300' : 'text-emerald-300'}">HP ${p.hp}</div>
+                    <div class="text-[10px] mt-1 flex flex-wrap gap-1">${buildQuickItemTags(p)}</div>
                 `;
                 btn.onclick = () => {
                     selectedUid = p.uid;
@@ -999,7 +1006,7 @@
             const clearSelect = document.getElementById('clearRoomSelect');
             const existing = clearSelect.value;
             clearSelect.innerHTML = '<option value="">-- 無 --</option>';
-            const activeFloors = getActivePoisonFloors();
+            const activeFloors = getEffectivePoisonFloors();
             mapConfig.forEach(r => {
                 if (!isRoomPoisoned(r.id, activeFloors)) return;
                 const opt = document.createElement('option');
@@ -1014,6 +1021,23 @@
             const target = val || '';
             const indicator = document.getElementById('clearRoomHelper');
             if (indicator) indicator.textContent = target ? `準備解除：${target}` : '選擇房間後按解除';
+        }
+
+        function formatBattleDeltaCell(row) {
+            const base = `${row.battleDelta >= 0 ? '+' : ''}${row.battleDelta}${row.battleLabel ? ' ' + row.battleLabel : ''}`;
+            if (row.shadowDrainGain > 0) return `${base} <span class="text-emerald-300 font-black">(+${row.shadowDrainGain})</span>`;
+            return base;
+        }
+
+        function buildQuickItemTags(p) {
+            const tags = [];
+            if (p.items?.rocketLauncher) tags.push('<span class="px-1 rounded bg-red-500/25 text-red-200 border border-red-400/40">🚀</span>');
+            if (p.items?.mask) tags.push('<span class="px-1 rounded bg-teal-500/25 text-teal-200 border border-teal-400/40">😷</span>');
+            if (p.items?.rope) tags.push('<span class="px-1 rounded bg-amber-500/25 text-amber-200 border border-amber-400/40">🪢</span>');
+            if (p.items?.dimensionPocket) tags.push('<span class="px-1 rounded bg-violet-500/25 text-violet-200 border border-violet-400/40">🌀</span>');
+            if (p.items?.recycler) tags.push(`<span class="px-1 rounded bg-emerald-500/25 text-emerald-200 border border-emerald-400/40">♻️${p.recyclerUsed ? '✓' : ''}</span>`);
+            if (p.items?.adrenaline) tags.push('<span class="px-1 rounded bg-yellow-500/25 text-yellow-200 border border-yellow-400/40">⚡</span>');
+            return tags.length ? tags.join('') : '<span class="text-slate-500">—</span>';
         }
 
         function updateHunger(uid, val) {
@@ -1223,7 +1247,7 @@
                     <td class="p-3 font-mono text-blue-500">${p.totalStr}/${p.finalSpdText}/${p.items.dimensionPocket ? '∞' : p.lod}</td>
                     <td class="p-3 text-right text-white">${p.baseHp}</td>
                     <td class="p-3 text-right ${p.surgeryDelta>0?'text-emerald-400':'text-slate-300'}">${p.surgeryDelta>=0?'+':''}${p.surgeryDelta}</td>
-                    <td class="p-3 text-right text-slate-300">${p.battleDelta>=0?'+':''}${p.battleDelta}${p.battleLabel ? ' '+p.battleLabel : ''}</td>
+                    <td class="p-3 text-right text-slate-300">${formatBattleDeltaCell(p)}</td>
                     <td class="p-3 text-right text-red-400">${p.poisonDelta}</td>
                     <td class="p-3 text-right text-amber-400">${p.rationExempt ? `免繳(${getRationExemptReason(p) || '規則'})` : p.hungerDelta}</td>
                     <td class="p-3 text-right text-red-400">${p.rocketDelta}</td>
