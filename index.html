@@ -462,9 +462,9 @@
             ensureSettlementInputs();
             const round = parseInt(document.getElementById('gameRound').value);
             const isLandingRound = round === 0;
-            const gasDmgList = [0, 1, 2, 2, 3, 3, 4];
+            const gasDmgList = [1, 1, 2, 2, 3, 3, 4];
             const gasDmg = gasDmgList[round];
-            const activePoisonFloors = isLandingRound ? new Set() : getEffectivePoisonFloors();
+            const activePoisonFloors = getEffectivePoisonFloors();
             const rocketMap = buildRocketHitMap();
 
             // 預先計算戰鬥需要的力量與槍枝狀態
@@ -607,7 +607,7 @@
 
         function getCalculatedState() {
             const round = parseInt(document.getElementById('gameRound').value);
-            const gasDmgList = [0, 1, 2, 2, 3, 3, 4];
+            const gasDmgList = [1, 1, 2, 2, 3, 3, 4];
             const gasDmg = gasDmgList[round];
             const activePoisonFloors = getEffectivePoisonFloors();
 
@@ -839,10 +839,10 @@
                 ? `事件房間：${conflictRooms.join('、')}｜死亡：${conflictDeaths.length ? conflictDeaths.join('、') : '無'}${shadowDrainLines.length ? `｜暗影吸收：${shadowDrainLines.join('、')}` : ''}`
                 : '本回合無戰鬥/亂鬥/暗影事件';
 
-            const winningFloors = round === 0 ? [] : Array.from(getWinningPoisonFloors()).sort();
-            const existingPoisonFloors = round === 0 ? [] : Array.from(lockedPoisonFloors).sort();
+            const winningFloors = Array.from(getWinningPoisonFloors()).sort();
+            const existingPoisonFloors = Array.from(lockedPoisonFloors).sort();
             const newPoisonFloors = winningFloors.filter(f => !lockedPoisonFloors.has(f));
-            const poisonFloors = round === 0 ? [] : Array.from(new Set([...existingPoisonFloors, ...winningFloors])).sort();
+            const poisonFloors = Array.from(new Set([...existingPoisonFloors, ...winningFloors])).sort();
             const poisonDeaths = rows.filter(r => r.poisonDelta < 0 && r.newHp <= 0).map(r => r.name);
             const poisonText = poisonFloors.length
                 ? `毒氣樓層：既有[${existingPoisonFloors.length ? existingPoisonFloors.join('、') : '無'}]＋新增[${newPoisonFloors.length ? newPoisonFloors.join('、') : '無'}]＝最終[${poisonFloors.join('、')}]｜死亡：${poisonDeaths.length ? poisonDeaths.join('、') : '無'}`
@@ -898,10 +898,8 @@
         function confirmSettle() {
             const round = parseInt(document.getElementById('gameRound').value);
             const rows = buildSettlementRows();
-            if (round > 0) {
-                const winners = getWinningPoisonFloors();
-                lockedPoisonFloors = new Set([...lockedPoisonFloors, ...winners]);
-            }
+            const winners = getWinningPoisonFloors();
+            lockedPoisonFloors = new Set([...lockedPoisonFloors, ...winners]);
 
             settlementHistory = settlementHistory.filter(entry => entry.round !== round);
             settlementHistory.push({ round, rows: rows.map(r => ({...r})) });
