@@ -794,7 +794,7 @@
                             <option value="adrenaline" ${r.consumable === 'adrenaline' ? 'selected' : ''}>腎上腺素(+0)</option>
                         </select>
                     </td>
-                    <td class="p-2 text-right font-black text-amber-400">${r.newHp}</td>
+                    <td class="p-2 text-right font-black text-amber-400">${formatNewHpCell(r)}</td>
                 </tr>
             `).join('');
 
@@ -1046,6 +1046,14 @@
             return `${row.poisonDelta}`;
         }
 
+        function formatNewHpCell(row) {
+            const hpText = `${row.newHp}`;
+            if (!row.isShadow) return hpText;
+            if (row.shadowDrainGain > 0) return `${hpText} <span class="text-emerald-300 font-black">(+${row.shadowDrainGain})</span>`;
+            if (row.shadowDrainTotal > 0) return `${hpText} <span class="text-violet-300 font-black">(累${row.shadowDrainTotal})</span>`;
+            return hpText;
+        }
+
         function buildQuickItemTags(p) {
             const tags = [];
             if (p.items?.rocketLauncher) tags.push('<span class="px-1 rounded bg-red-500/25 text-red-200 border border-red-400/40">🚀</span>');
@@ -1269,7 +1277,7 @@
                     <td class="p-3 text-right text-amber-400">${p.rationExempt ? `免繳(${getRationExemptReason(p) || '規則'})` : p.hungerDelta}</td>
                     <td class="p-3 text-right text-red-400">${p.rocketDelta}</td>
                     <td class="p-3 text-right text-emerald-300">${consumableLabel} ${p.consumableDelta?`(${p.consumableDelta>=0?'+':''}${p.consumableDelta})`:''}</td>
-                    <td class="p-3 text-right text-amber-500 font-black">${p.newHp}</td>`;
+                    <td class="p-3 text-right text-amber-500 font-black">${formatNewHpCell(p)}</td>`;
                 if (viewRound === 'current') tr.onclick = () => selectPlayer(p.uid);
                 tbody.appendChild(tr);
             });
