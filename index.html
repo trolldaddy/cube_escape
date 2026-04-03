@@ -548,9 +548,19 @@
                 const upperRoom = p.currentRoomId?.toUpperCase() || '';
                 const maskOn = p.items?.mask;
                 const shadow = p.isShadow;
+                const roomCleared = upperRoom ? clearedRooms.has(upperRoom) : false;
+                const floorToxic = upperRoom
+                    ? (upperRoom === '202'
+                        ? false
+                        : (upperRoom === 'B501'
+                            ? (activePoisonFloors.has('B4') && activePoisonFloors.has('B5'))
+                            : activePoisonFloors.has(getRoomFloor(upperRoom))))
+                    : false;
                 const gasOn = upperRoom ? isRoomPoisoned(upperRoom, activePoisonFloors) : false;
                 const reviveBuffActive = p.reviveBuffRound === round;
                 const poisonImmune = reviveBuffActive;
+                const poisonBlockedByMask = floorToxic && !roomCleared && !!maskOn && !shadow && !poisonImmune;
+                const poisonBlockedByClear = floorToxic && roomCleared;
                 const rationExempt = (p.hp > 0 && upperRoom === 'B204') || shadow || reviveBuffActive;
                 const poisonDelta = (!maskOn && gasOn && !shadow && !poisonImmune) ? -gasDmg : 0;
                 const rocketDelta = upperRoom ? -(rocketMap[upperRoom] || 0) : 0;
@@ -581,6 +591,8 @@
                     battleDelta: combatDelta,
                     battleLabel: combatLabel,
                     poisonDelta,
+                    poisonBlockedByMask,
+                    poisonBlockedByClear,
                     hungerDelta: hunger,
                     rocketDelta,
                     consumable,
@@ -772,7 +784,7 @@
                     <td class="p-2 text-right">${r.baseHp}</td>
                     <td class="p-2 text-right">${r.surgeryDelta >= 0 ? '+' : ''}${r.surgeryDelta}</td>
                     <td class="p-2 text-right">${formatBattleDeltaCell(r)}</td>
-                    <td class="p-2 text-right">${r.poisonImmune ? '免疫' : r.poisonDelta}</td>
+                    <td class="p-2 text-right">${formatPoisonCell(r)}</td>
                     <td class="p-2 text-right">${r.rationExempt ? `免繳(${getRationExemptReason(r) || '規則'})` : r.hungerDelta}</td>
                     <td class="p-2 text-right">${r.rocketDelta}</td>
                     <td class="p-2 text-right">
@@ -1027,6 +1039,13 @@
             return base;
         }
 
+        function formatPoisonCell(row) {
+            if (row.poisonImmune) return '免疫';
+            if (row.poisonBlockedByMask) return '<span class="text-emerald-300 font-black">面罩防護</span>';
+            if (row.poisonBlockedByClear) return '<span class="text-sky-300 font-black">已解除</span>';
+            return `${row.poisonDelta}`;
+        }
+
         function buildQuickItemTags(p) {
             const tags = [];
             if (p.items?.rocketLauncher) tags.push('<span class="px-1 rounded bg-red-500/25 text-red-200 border border-red-400/40">🚀</span>');
@@ -1246,7 +1265,7 @@
                     <td class="p-3 text-right text-white">${p.baseHp}</td>
                     <td class="p-3 text-right ${p.surgeryDelta>0?'text-emerald-400':'text-slate-300'}">${p.surgeryDelta>=0?'+':''}${p.surgeryDelta}</td>
                     <td class="p-3 text-right text-slate-300">${formatBattleDeltaCell(p)}</td>
-                    <td class="p-3 text-right text-red-400">${p.poisonDelta}</td>
+                    <td class="p-3 text-right text-red-400">${formatPoisonCell(p)}</td>
                     <td class="p-3 text-right text-amber-400">${p.rationExempt ? `免繳(${getRationExemptReason(p) || '規則'})` : p.hungerDelta}</td>
                     <td class="p-3 text-right text-red-400">${p.rocketDelta}</td>
                     <td class="p-3 text-right text-emerald-300">${consumableLabel} ${p.consumableDelta?`(${p.consumableDelta>=0?'+':''}${p.consumableDelta})`:''}</td>
